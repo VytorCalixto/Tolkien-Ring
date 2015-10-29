@@ -12,11 +12,10 @@
 #define TAMFILA      5
 #define MAXHOSTNAME 30
 
-main ( int argc, char *argv[] )
-  {
+int main ( int argc, char *argv[] ){
 	int s, t;
 	unsigned int i;
-        char buf [BUFSIZ + 1];
+    char buf [BUFSIZ + 1];
 	struct sockaddr_in sa, isa;  /* sa: servidor, isa: cliente */
 	struct hostent *hp;
 	char localhost [MAXHOSTNAME];
@@ -36,7 +35,6 @@ main ( int argc, char *argv[] )
 	sa.sin_port = htons(atoi(argv[1]));
 
 	bcopy ((char *) hp->h_addr, (char *) &sa.sin_addr, hp->h_length);
-
 	sa.sin_family = hp->h_addrtype;		
 
 
