@@ -13,3 +13,4 @@ while 1:
     message, addr = s.recvfrom(1024) # 1024 é o tamanho do buffer
     if message:
         print addr, ">:", message
+        s.sendto(hostname + " responde: " + message, addr) # replica a mensagem
