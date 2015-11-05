@@ -58,9 +58,9 @@ A mensagem é definida assim
 
 **Controle**
 
-|Token|Monitor|Configuração|Reservado|
-|-----|-------|------------|---------|
-|1 bit|1 bit|1 bit|5 bits|
+|Token|Monitor|Configuração|Handshake|Reservado|
+|-----|-------|------------|---------|---------|
+|1 bit|1 bit|1 bit|1bit|4 bits|
 
 ## Especificação do trabalho
 Implementar um chat entre 4 máquinas montadas como um anel com passagem de bastão temporizado.
