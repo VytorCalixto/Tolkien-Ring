@@ -57,6 +57,7 @@ A mensagem é definida assim
 |1 Byte|1 Byte|6 Bytes|6 Bytes|1 Byte|<= 1004 Bytes|4 Bytes|1 Byte|
 
 **Controle**
+
 |Token|Monitor|Configuração|Reservado|
 |-----|-------|------------|---------|
 |1 bit|1 bit|1 bit|5 bits|
