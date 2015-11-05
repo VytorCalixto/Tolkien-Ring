@@ -54,7 +54,7 @@ A mensagem é definida assim
 
 |Indicador de início|Controle|Origem|Destino|Tamanho|Dados|CRC|Resposta|
 |-------------------|--------|------|-------|-------|-----|---|--------|
-|1 Byte|1 Byte|6 Bytes|6 Bytes|1 Byte|Tam dos dados|Tam do CRC|1 Byte|
+|1 Byte|1 Byte|6 Bytes|6 Bytes|1 Byte|<= 1004 Bytes|4 Bytes|1 Byte|
 
 ## Especificação do trabalho
 Implementar um chat entre 4 máquinas montadas como um anel com passagem de bastão temporizado.
