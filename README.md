@@ -2,10 +2,11 @@
 Chat de até quatro máquinas sobre uma rede Token Ring: Trabalho 2 de Redes 1
 
 ## Rodando
-`chat -p [communicationPort] -s [serverPort]`
+`chat -p [communicationPort] -s [serverPort] -c`
 
 * -p: porta de comunicação do anel
-* -s: porta do servidor de configuração da rede
+* -s: porta do servidor de configuração do anel
+* -c: Inicia em modo servidor de configuração do anel
 
 ## Funcionamento
 O TolkienRing é um chat de até 4 máquinas sobre uma rede Token Ring.
