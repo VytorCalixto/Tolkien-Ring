@@ -47,7 +47,9 @@ def main(stdscr, args):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     confserver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind((host, port))
+    s.setblocking(False)
     confserver.bind((host, serverPort))
+    confserver.setblocking(False)
 
     machines.append((host, port, serverPort))
     printHeader(stdscr, hostname, host, "Desconectado")
@@ -92,20 +94,31 @@ def main(stdscr, args):
                 curses.curs_set(0)
                 curses.noecho()
                 # manda handshake
-                confserver.sendto("handshake", nextHost)
-                messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
+                try:
+                    confserver.sendto("handshake", nextHost)
+                    messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
+                except socket.error:
+                    pass
                 # espera resposta
             # espera alguém tentar conectar
-            data, addr = confserver.recvfrom(1024)
-            if data == "handshake":
-                confserver.sendto("ok", addr)
-                machines.append(addr)
-                messages.append(("INFO: máquina %s se conectou" % addr[0], curses.A_BOLD))
-            elif data == "ok":
-                nextHost = (nextHost[0], port)
-                machines.append(addr)
-                messages.append(("INFO: você se conectou a rede", curses.A_BOLD))
-
+            try:
+                data, addr = confserver.recvfrom(1024)
+            except socket.error:
+                pass
+            else:
+                if data:
+                    messages.append(("data: %s" % data, curses.A_NORMAL))
+                if data == "handshake":
+                    try:
+                        confserver.sendto("ok", addr)
+                        machines.append(addr)
+                        messages.append(("INFO: máquina %s se conectou" % addr[0], curses.A_BOLD))
+                    except socket.error:
+                        pass
+                elif data == "ok":
+                    nextHost = (nextHost[0], port)
+                    machines.append(addr)
+                    messages.append(("INFO: você se conectou a rede", curses.A_BOLD))
 
         chatscreen.refresh()
         textbox.refresh()
