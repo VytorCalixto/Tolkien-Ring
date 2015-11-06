@@ -3,6 +3,7 @@
 import socket
 import argparse
 import sys
+import curses
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="TolkienRing: Chat em anel de até 4 máquinas", prog="chat")
@@ -11,39 +12,105 @@ def parseArgs():
     parser.add_argument("-c", "--configurationServer", help="Inicia no modo de configuração", action="store_true")
     return parser.parse_args()
 
+def printHeader(screen, hostname, ip, status):
+    screen.clear()
+    screen.addstr(0, 0, "Máquina: %s" % hostname)
+    screen.addstr(1, 0, "IP: %s" % ip)
+    screen.addstr(2, 0, "Status: %s" % status)
+    x = screen.getmaxyx()[1]
+    title = "### TolkienRing ###"
+    screen.addstr(3, (x - len(title))/2, title, curses.A_REVERSE)
+    screen.refresh()
 
-def main(args):
+def printMessages(screen, messages):
+    yx = screen.getmaxyx()
+    topRange = len(messages) if ((yx[0]-2) > len(messages)) else (yx[0]-2)
+    for i in range(0, topRange):
+        screen.addstr(i+1, 1, messages[i][0], messages[i][1])
+
+def main(stdscr, args):
+    stdscr.nodelay(True)
+
+    machines = []
+    messages = []
+    nextHost = (0,0)
     hostname = socket.gethostname()
     host = socket.gethostbyname(hostname)
-    print "Você está na máquina %s, IP %s" % (hostname, host)
+
     if args.port == args.serverPort:
         # TODO: mostrar uma mensagem de erro melhor
         raise ValueError("O valor da porta de rede não pode ser igual ao do servidor de configuração")
         sys.exit(2)
+
     port = args.port
     serverPort = args.serverPort
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    confserver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind((host, port))
-    print "Servidor rodando na porta %d" % port
-    if args.configurationServer:
-        print "Você é o servidor de configuração"
-        i = 0
-        while(i<4):
-            message, addr = s.recvfrom(1024)
-            if message == "handshake":
-                print addr, "conectou"
-                s.sendto("servidor recebeu", addr)
-    else:
-        servername = raw_input("Digite o nome do servidor: ")
-        serverip = socket.gethostbyname(servername)
-        serverport = input("Digite a porta do servidor: ")
-        # Esse não é o handshake, tem que definir direito as mensagens
-        s.sendto("handshake", (serverip, serverport))
-        while 1:
-            message, addr = s.recvfrom(1024) # 1024 é o tamanho do buffer (talvez tenha que ser maior?)
-            if message:
-                print addr, ">:", message
+    confserver.bind((host, serverPort))
+
+    machines.append((host, port, serverPort))
+    printHeader(stdscr, hostname, host, "Desconectado")
+    yx = stdscr.getmaxyx()
+
+    chatscreen = stdscr.subwin(yx[0]-7, yx[1]-1, 4, 0)
+    textbox = stdscr.subwin(3, yx[1]-1, yx[0]-3, 0)
+    stdscr.nodelay(True)
+    chatscreen.nodelay(True)
+    
+    close = False
+    curses.curs_set(0)
+    messages.append(("INFO: Você não está conectado", curses.A_BOLD))
+    messages.append(("INFO: Aperte 'c' para se conectar a alguém", curses.A_BOLD))
+    messages.append(("INFO: Nome da máquina: %s" % hostname, curses.A_BOLD))
+    messages.append(("INFO: Porta do servidor: %s" % serverPort, curses.A_BOLD))
+    messages.append(("INFO: Porta da rede: %s" % port, curses.A_BOLD))
+   
+    while not close:
+        chatscreen.box()
+        textbox.box()
+        printMessages(chatscreen, messages)        
+        if(len(machines) <= 1):
+            c = chatscreen.getch()
+            if c == ord('c'):
+                # Pega informações do host
+                curses.curs_set(1)
+                curses.echo()
+                textbox.addstr(0, 1, "Digite o nome da máquina:")
+                textbox.refresh()
+                n = textbox.getstr(1, 1)
+                textbox.clear()
+                textbox.box()
+                textbox.refresh()
+                textbox.addstr(0, 1, "Digite a porta (a porta padrão é 5050):")
+                textbox.refresh()
+                p = textbox.getstr(1, 1)
+                nextHost = (socket.gethostbyname(n), int(p))
+                textbox.clear()
+                textbox.box()
+                textbox.refresh()
+                curses.curs_set(0)
+                curses.noecho()
+                # manda handshake
+                confserver.sendto("handshake", nextHost)
+                messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
+                # espera resposta
+            # espera alguém tentar conectar
+            data, addr = confserver.recvfrom(1024)
+            if data == "handshake":
+                confserver.sendto("ok", addr)
+                machines.append(addr)
+                messages.append(("INFO: máquina %s se conectou" % addr[0], curses.A_BOLD))
+            elif data == "ok":
+                nextHost = (nextHost[0], port)
+                machines.append(addr)
+                messages.append(("INFO: você se conectou a rede", curses.A_BOLD))
+
+
+        chatscreen.refresh()
+        textbox.refresh()
+
 
 if __name__ == "__main__":
     args = parseArgs()
-    main(args)
+    curses.wrapper(main, args)
