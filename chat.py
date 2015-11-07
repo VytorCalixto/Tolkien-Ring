@@ -31,6 +31,17 @@ def printMessages(screen, messages):
     for i in range(0, topRange):
         screen.addstr(i+1, 1, messages[i][0], messages[i][1])
 
+def printMachines(screen, machines):
+    x = screen.getmaxyx()[1]
+    title = "HOSTS"
+    screen.addstr(1, (x - len(title))/2, title, curses.A_BOLD)
+    for i in range(0, len(machines)):
+        host = machines[i][0]
+        screen.addstr(i+2, 1, "%d - %s" % (i, getMachineName(host)) )
+
+def getMachineName(host):
+    return socket.gethostbyaddr(host)[0].split('.')[0]
+
 def main(stdscr, args):
     stdscr.nodelay(1)
 
@@ -61,7 +72,8 @@ def main(stdscr, args):
     printHeader(stdscr, hostname, host, "Desconectado")
     yx = stdscr.getmaxyx()
 
-    chatscreen = stdscr.subwin(yx[0]-7, yx[1]-1, 4, 0)
+    chatscreen = stdscr.subwin(yx[0]-7, yx[1]-20, 4, 0)
+    machinescreen = stdscr.subwin(yx[0]-7, 18, 4, yx[1]-19)
     textbox = stdscr.subwin(3, yx[1]-1, yx[0]-3, 0)
     chatscreen.nodelay(True)
     
@@ -75,7 +87,9 @@ def main(stdscr, args):
     while True:
         chatscreen.box()
         textbox.box()
+        machinescreen.box()
         printMessages(chatscreen, messages)        
+        printMachines(machinescreen, machines)
         key = chatscreen.getch()
         # ESC key
         if key == 27:
@@ -109,7 +123,7 @@ def main(stdscr, args):
                 try:
                     c = chr(key)
                     if c == '\n':
-                        messages.append(("msg: %s" % ''.join(msg), curses.A_NORMAL))
+                        messages.append(("você: %s" % ''.join(msg), curses.A_NORMAL))
                         try:
                             delim_index = msg.index(':')
                             machine_index = int(''.join(msg[0:delim_index]))
@@ -121,6 +135,10 @@ def main(stdscr, args):
                             msg = []
                     elif c in string.printable:
                         msg.append(c)
+                        textbox.clear()
+                        textbox.box()
+                        textbox.addstr(1, 1, string.join(msg, ''))
+                        textbox.refresh()
                 except ValueError:
                     pass
         
@@ -134,10 +152,10 @@ def main(stdscr, args):
                 if data == "handshake":
                     connection.ack_handshake(confserver,addr)
                     machines.append(addr)
-                    messages.append(("INFO: máquina %s se conectou" % addr[0], curses.A_BOLD))
+                    messages.append(("INFO: %s se conectou" % getMachineName(addr[0]), curses.A_BOLD))
                 elif data == "ok":
                     machines.append(addr)
-                    messages.append(("INFO: você se conectou a rede", curses.A_BOLD))
+                    messages.append(("INFO: Você se conectou a rede", curses.A_BOLD))
             else:
                 # Treat message
                 pass
@@ -148,6 +166,7 @@ def main(stdscr, args):
 
         chatscreen.refresh()
         textbox.refresh()
+        machinescreen.refresh()
 
 
 if __name__ == "__main__":
