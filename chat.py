@@ -115,10 +115,10 @@ def main(stdscr, args):
                             machine_index = int(''.join(msg[0:delim_index]))
                             msg_str = ''.join(msg[delim_index+2:])
                             connection.put_message(s,msg_str,machines[machine_index])
-                            msg = []
                         except Exception, e:
                             messages.append(("ERRO: A mensagem deve ter o formato: <maquina>: <mensagem>", curses.A_BOLD))
-                            raise e
+                        finally:
+                            msg = []
                     elif c in string.printable:
                         msg.append(c)
                 except ValueError:
