@@ -18,7 +18,7 @@ class Message(object):
     def setData(self, data):
         self.data = data
     def calcParity(self, data):
-        nop # TODO: calcular paridade
+        pass # TODO: calcular paridade
     def setResponse(self, response):
         self.response = str(chr(response))
     def getControl(self):

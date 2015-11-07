@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 import socket
+import select
 import argparse
 import sys
 import curses
+import string
+from connection import Connection
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="TolkienRing: Chat em anel de até 4 máquinas", prog="chat")
@@ -29,10 +32,11 @@ def printMessages(screen, messages):
         screen.addstr(i+1, 1, messages[i][0], messages[i][1])
 
 def main(stdscr, args):
-    stdscr.nodelay(True)
+    stdscr.nodelay(1)
 
     machines = []
     messages = []
+    msg = []
     nextHost = (0,0)
     hostname = socket.gethostname()
     host = socket.gethostbyname(hostname)
@@ -44,12 +48,14 @@ def main(stdscr, args):
 
     port = args.port
     serverPort = args.serverPort
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    confserver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.bind((host, port))
-    s.setblocking(False)
-    confserver.bind((host, serverPort))
-    confserver.setblocking(False)
+
+    connection = Connection()
+    s = connection.open_socket(host, port)
+    confserver = connection.open_socket(host, serverPort)
+    print("before")
+    connection.input_sockets = [s,confserver]
+    connection.output_sockets = [s,confserver]
+    print("after")
 
     machines.append((host, port, serverPort))
     printHeader(stdscr, hostname, host, "Desconectado")
@@ -57,10 +63,8 @@ def main(stdscr, args):
 
     chatscreen = stdscr.subwin(yx[0]-7, yx[1]-1, 4, 0)
     textbox = stdscr.subwin(3, yx[1]-1, yx[0]-3, 0)
-    stdscr.nodelay(True)
     chatscreen.nodelay(True)
     
-    close = False
     curses.curs_set(0)
     messages.append(("INFO: Você não está conectado", curses.A_BOLD))
     messages.append(("INFO: Aperte 'c' para se conectar a alguém", curses.A_BOLD))
@@ -68,13 +72,17 @@ def main(stdscr, args):
     messages.append(("INFO: Porta do servidor: %s" % serverPort, curses.A_BOLD))
     messages.append(("INFO: Porta da rede: %s" % port, curses.A_BOLD))
    
-    while not close:
+    while True:
         chatscreen.box()
         textbox.box()
         printMessages(chatscreen, messages)        
+        key = chatscreen.getch()
+        # ESC key
+        if key == 27:
+            if chatscreen.getch() == -1:
+                break
         if(len(machines) <= 1):
-            c = chatscreen.getch()
-            if c == ord('c'):
+            if key == ord('c'):
                 # Pega informações do host
                 curses.curs_set(1)
                 curses.echo()
@@ -93,32 +101,50 @@ def main(stdscr, args):
                 textbox.refresh()
                 curses.curs_set(0)
                 curses.noecho()
-                # manda handshake
+                # Send handshake
+                connection.send_handshake(confserver,nextHost)
+                messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
+        else:
+            if key != -1:
                 try:
-                    confserver.sendto("handshake", nextHost)
-                    messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
-                except socket.error:
+                    c = chr(key)
+                    if c == '\n':
+                        messages.append(("msg: %s" % ''.join(msg), curses.A_NORMAL))
+                        try:
+                            delim_index = msg.index(':')
+                            machine_index = int(''.join(msg[0:delim_index]))
+                            msg_str = ''.join(msg[delim_index+2:])
+                            connection.put_message(s,msg_str,machines[machine_index])
+                            msg = []
+                        except Exception, e:
+                            messages.append(("ERRO: A mensagem deve ter o formato: <maquina>: <mensagem>", curses.A_BOLD))
+                            raise e
+                    elif c in string.printable:
+                        msg.append(c)
+                except ValueError:
                     pass
-                # espera resposta
-            # espera alguém tentar conectar
-            try:
-                data, addr = confserver.recvfrom(1024)
-            except socket.error:
-                pass
-            else:
-                if data:
-                    messages.append(("data: %s" % data, curses.A_NORMAL))
+        
+        ready_to_read,ready_to_write,in_error = connection.poll()
+
+        for sock in ready_to_read:
+            data, addr = sock.recvfrom(1024)
+            if data:
+                messages.append(("data: %s" % data, curses.A_NORMAL))
+            if sock is confserver:
                 if data == "handshake":
-                    try:
-                        confserver.sendto("ok", addr)
-                        machines.append(addr)
-                        messages.append(("INFO: máquina %s se conectou" % addr[0], curses.A_BOLD))
-                    except socket.error:
-                        pass
+                    connection.ack_handshake(confserver,addr)
+                    machines.append(addr)
+                    messages.append(("INFO: máquina %s se conectou" % addr[0], curses.A_BOLD))
                 elif data == "ok":
-                    nextHost = (nextHost[0], port)
                     machines.append(addr)
                     messages.append(("INFO: você se conectou a rede", curses.A_BOLD))
+            else:
+                # Treat message
+                pass
+
+        for sock in ready_to_write:
+            if connection.has_message(sock):
+                connection.send_message(sock)
 
         chatscreen.refresh()
         textbox.refresh()
