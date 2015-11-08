@@ -76,19 +76,19 @@ def main(stdscr, args):
     machinescreen = stdscr.subwin(yx[0]-7, 18, 4, yx[1]-19)
     textbox = stdscr.subwin(3, yx[1]-1, yx[0]-3, 0)
     chatscreen.nodelay(True)
-    
+
     curses.curs_set(0)
     messages.append(("INFO: Você não está conectado", curses.A_BOLD))
     messages.append(("INFO: Aperte 'c' para se conectar a alguém", curses.A_BOLD))
     messages.append(("INFO: Nome da máquina: %s" % hostname, curses.A_BOLD))
     messages.append(("INFO: Porta do servidor: %s" % serverPort, curses.A_BOLD))
     messages.append(("INFO: Porta da rede: %s" % port, curses.A_BOLD))
-   
+
     while True:
         chatscreen.box()
         textbox.box()
         machinescreen.box()
-        printMessages(chatscreen, messages)        
+        printMessages(chatscreen, messages)
         printMachines(machinescreen, machines)
         key = chatscreen.getch()
         # ESC key
@@ -133,6 +133,9 @@ def main(stdscr, args):
                             messages.append(("ERRO: A mensagem deve ter o formato: <maquina>: <mensagem>", curses.A_BOLD))
                         finally:
                             msg = []
+                            textbox.clear()
+                            textbox.box()
+                            textbox.refresh()
                     elif c in string.printable:
                         msg.append(c)
                         textbox.clear()
@@ -141,7 +144,7 @@ def main(stdscr, args):
                         textbox.refresh()
                 except ValueError:
                     pass
-        
+
         ready_to_read,ready_to_write,in_error = connection.poll()
 
         for sock in ready_to_read:
