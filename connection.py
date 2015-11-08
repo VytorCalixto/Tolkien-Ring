@@ -1,4 +1,5 @@
 import socket, select
+import message
 # Recommended for queues on python doc
 from collections import deque
 
@@ -24,11 +25,15 @@ class Connection(object):
     def poll(self):
         return select.select(self.input_sockets, self.output_sockets, self.monitor_sockets,0)
 
-    def send_handshake(self, sock, addr):
+    def send_handshake(self, sock, addr, port=1337):
         self.messages[sock].append(("handshake", addr))
+        handshake = message.makeHandshake(port)
+        self.messages[sock].append((handshake.getMessage(), addr))
 
-    def ack_handshake(self, sock, addr):
+    def ack_handshake(self, sock, addr, host):
         self.messages[sock].append(("ok", addr))
+        ack = message.makeAckHandshake(host)
+        self.messages[sock].append((ack.getMessage(), addr))
 
     def put_message(self, sock, msg, addr):
         self.messages[sock].append((msg, addr))

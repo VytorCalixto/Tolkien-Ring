@@ -48,7 +48,6 @@ def main(stdscr, args):
     machines = []
     messages = []
     msg = []
-    nextHost = (0,0)
     hostname = socket.gethostname()
     host = socket.gethostbyname(hostname)
 
@@ -59,6 +58,7 @@ def main(stdscr, args):
 
     port = args.port
     serverPort = args.serverPort
+    nextHost = (host, port)
 
     connection = Connection()
     s = connection.open_socket(host, port)
@@ -116,34 +116,10 @@ def main(stdscr, args):
                 curses.curs_set(0)
                 curses.noecho()
                 # Send handshake
-                connection.send_handshake(confserver,nextHost)
+                connection.send_handshake(confserver,nextHost, port)
                 messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
         else:
-            if key != -1:
-                try:
-                    c = chr(key)
-                    if c == '\n':
-                        messages.append(("você: %s" % ''.join(msg), curses.A_NORMAL))
-                        try:
-                            delim_index = msg.index(':')
-                            machine_index = int(''.join(msg[0:delim_index]))
-                            msg_str = ''.join(msg[delim_index+2:])
-                            connection.put_message(s,msg_str,machines[machine_index])
-                        except Exception, e:
-                            messages.append(("ERRO: A mensagem deve ter o formato: <maquina>: <mensagem>", curses.A_BOLD))
-                        finally:
-                            msg = []
-                            textbox.clear()
-                            textbox.box()
-                            textbox.refresh()
-                    elif c in string.printable:
-                        msg.append(c)
-                        textbox.clear()
-                        textbox.box()
-                        textbox.addstr(1, 1, string.join(msg, ''))
-                        textbox.refresh()
-                except ValueError:
-                    pass
+            pass
 
         ready_to_read,ready_to_write,in_error = connection.poll()
 
@@ -153,7 +129,8 @@ def main(stdscr, args):
                 messages.append(("data: %s" % data, curses.A_NORMAL))
             if sock is confserver:
                 if data == "handshake":
-                    connection.ack_handshake(confserver,addr)
+                    connection.ack_handshake(confserver, addr, nextHost)
+                    nextHost = addr
                     machines.append(addr)
                     messages.append(("INFO: %s se conectou" % getMachineName(addr[0]), curses.A_BOLD))
                 elif data == "ok":

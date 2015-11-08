@@ -129,8 +129,8 @@ def makeHandshake(port):
     m.setData(data)
     return m
 
-def makeAckHandshake(host, port):
-    data = "%s:%s" % (host, str(port))
+def makeAckHandshake(host):
+    data = "%s:%s" % (host[0], str(host[1]))
     m = Message()
     m.setConfiguration()
     m.setHandshake()
