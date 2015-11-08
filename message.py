@@ -61,6 +61,8 @@ class Message(object):
 
     def calcParity(self):
         data = self.getMessageWithoutParity()
+        #FIXME: crc32 retorna número positivo ou negativo
+        #paridade precisa de 4 caracteres para ser representada
         self.parity = crc32(data)
 
     def setResponse(self, response):
