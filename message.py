@@ -24,12 +24,12 @@ class Message(object):
     def __init__(self):
         # |TMCHRRRR|
         # T = token, M = monitor, C = configuração, H = handshake, R = reservado
-        self.control = ''
-        self.origin = ''
-        self.destiny = ''
+        self.control = chr(0)
+        self.origin = chr(0)
+        self.destiny = chr(0)
         self.size = 0
-        self.data = ''
-        self.parity = ''
+        self.data = chr(0)
+        self.parity = chr(0)
         self.response = chr(0)
 
     def setControl(self, control):
