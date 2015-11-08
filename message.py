@@ -1,3 +1,4 @@
+from binascii import crc32
 
 # Converte um caracter em uma lista que representa o valor binário
 def chrToBitList(c):
@@ -57,8 +58,9 @@ class Message(object):
     def setData(self, data):
         self.data = data
 
-    def calcParity(self, data):
-        pass # TODO: calcular paridade
+    def calcParity(self):
+        data = self.getMessageWithoutParity()
+        self.parity = crc32(data)
 
     def setResponse(self, response):
         self.response = chr(response)
@@ -104,15 +106,19 @@ class Message(object):
         return self.parity
 
     def checkParity(self):
-        # TODO: checar paridade
-        pass
+        data = self.getMessageWithoutParity()
+        return (crc32(data) == self.parity)
 
     def getResponse(self):
         return self.response
 
-    def getMessage(sef):
+    def getMessage(self):
         m.calcParity()
         m = [self.control, self.origin, self.destiny, self.size, self.data, self.parity, self.response]
+        return ''.join(m)
+
+    def getMessageWithoutParity(self):
+        m = [self.control, self.origin, self.destiny, self.size, self.data]
         return ''.join(m)
 
 def makeHandshake(port):
