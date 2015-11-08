@@ -114,7 +114,7 @@ class Message(object):
         return self.response
 
     def getMessage(self):
-        m.calcParity()
+        self.calcParity()
         m = [self.control, self.origin, self.destiny, self.size, self.data, self.parity, self.response]
         return ''.join(m)
 
