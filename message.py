@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 from binascii import crc32
 
 # Converte um caracter em uma lista que representa o valor binário
