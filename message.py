@@ -46,7 +46,7 @@ class Message(object):
         return self.data
     def getParity(self):
         return self.parity
-    def checkParity(self);
+    def checkParity(self):
         # TODO: checar paridade
         pass
     def getResponse(self):

@@ -42,13 +42,32 @@ def printMachines(screen, machines):
 def getMachineName(host):
     return socket.gethostbyaddr(host)[0].split('.')[0]
 
+def getNextHost(screen):
+    curses.echo()
+    screen.nodelay(False)
+    # Pega informações do host
+    screen.addstr(0, 1, "Digite o nome da máquina:")
+    screen.refresh()
+    name = screen.getstr(1,1)
+    screen.clear()
+    screen.box()
+    screen.refresh()
+    screen.addstr(0, 1, "Digite a porta (a porta padrão é 5050):")
+    screen.refresh()
+    port = screen.getstr(1,1)
+    screen.clear()
+    screen.box()
+    screen.refresh()
+    curses.noecho()
+    screen.nodelay(True)
+    return (socket.gethostbyname(name), int(port))
+
 def main(stdscr, args):
-    stdscr.nodelay(1)
+    stdscr.nodelay(True)
 
     machines = []
     messages = []
     msg = []
-    nextHost = (0,0)
     hostname = socket.gethostname()
     host = socket.gethostbyname(hostname)
 
@@ -63,91 +82,75 @@ def main(stdscr, args):
     connection = Connection()
     s = connection.open_socket(host, port)
     confserver = connection.open_socket(host, serverPort)
-    print("before")
     connection.input_sockets = [s,confserver]
     connection.output_sockets = [s,confserver]
-    print("after")
 
     machines.append((host, port, serverPort))
     printHeader(stdscr, hostname, host, "Desconectado")
     yx = stdscr.getmaxyx()
 
-    chatscreen = stdscr.subwin(yx[0]-7, yx[1]-20, 4, 0)
+    chatscreen = stdscr.subpad(yx[0]-7, yx[1]-20, 4, 0)
     machinescreen = stdscr.subwin(yx[0]-7, 18, 4, yx[1]-19)
     textbox = stdscr.subwin(3, yx[1]-1, yx[0]-3, 0)
-    chatscreen.nodelay(True)
-    
-    curses.curs_set(0)
+    textbox.nodelay(True)
+
     messages.append(("INFO: Você não está conectado", curses.A_BOLD))
     messages.append(("INFO: Aperte 'c' para se conectar a alguém", curses.A_BOLD))
     messages.append(("INFO: Nome da máquina: %s" % hostname, curses.A_BOLD))
     messages.append(("INFO: Porta do servidor: %s" % serverPort, curses.A_BOLD))
     messages.append(("INFO: Porta da rede: %s" % port, curses.A_BOLD))
    
+    curses.curs_set(0)
+    curses.cbreak()
     while True:
         chatscreen.box()
         textbox.box()
         machinescreen.box()
         printMessages(chatscreen, messages)        
         printMachines(machinescreen, machines)
-        key = chatscreen.getch()
-        # ESC key
-        if key == 27:
-            if chatscreen.getch() == -1:
-                break
         if(len(machines) <= 1):
+            key = stdscr.getch()
             if key == ord('c'):
-                # Pega informações do host
-                curses.curs_set(1)
-                curses.echo()
-                textbox.addstr(0, 1, "Digite o nome da máquina:")
-                textbox.refresh()
-                n = textbox.getstr(1, 1)
-                textbox.clear()
-                textbox.box()
-                textbox.refresh()
-                textbox.addstr(0, 1, "Digite a porta (a porta padrão é 5050):")
-                textbox.refresh()
-                p = textbox.getstr(1, 1)
-                nextHost = (socket.gethostbyname(n), int(p))
-                textbox.clear()
-                textbox.box()
-                textbox.refresh()
-                curses.curs_set(0)
-                curses.noecho()
                 # Send handshake
-                connection.send_handshake(confserver,nextHost)
+                connection.send_handshake(confserver,getNextHost(textbox))
                 messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
+                
         else:
+            key = textbox.getch()
             if key != -1:
-                try:
-                    c = chr(key)
-                    if c == '\n':
-                        messages.append(("você: %s" % ''.join(msg), curses.A_NORMAL))
-                        try:
-                            delim_index = msg.index(':')
-                            machine_index = int(''.join(msg[0:delim_index]))
-                            msg_str = ''.join(msg[delim_index+2:])
-                            connection.put_message(s,msg_str,machines[machine_index])
-                        except Exception, e:
-                            messages.append(("ERRO: A mensagem deve ter o formato: <maquina>: <mensagem>", curses.A_BOLD))
-                        finally:
-                            msg = []
-                    elif c in string.printable:
-                        msg.append(c)
-                        textbox.clear()
-                        textbox.box()
-                        textbox.addstr(1, 1, string.join(msg, ''))
-                        textbox.refresh()
-                except ValueError:
-                    pass
-        
+                if (key == curses.KEY_BACKSPACE or key == 127) and msg:
+                    msg.pop()
+                else:
+                    try:
+                        c = chr(key)
+                        if c == '\n':
+                            try:
+                                delim_index = msg.index(':')
+                                machine_index = int(''.join(msg[0:delim_index]))
+                                if machine_index != 0:
+                                    msg_str = ''.join(msg[delim_index+1:])
+                                    machine = machines[machine_index]
+                                    messages.append(("para %s: %s" % (getMachineName(machine[0]), msg_str), curses.A_NORMAL))
+                                    connection.put_message(s,msg_str,machine)
+                            except Exception:
+                                messages.append(("ERRO: A mensagem deve ter o formato: <host>:<mensagem>", curses.A_BOLD))
+                            finally:
+                                msg = []
+                        elif c in string.printable:
+                            msg.append(c)
+                    except ValueError:
+                        pass
+                textbox.clear()
+                textbox.box()
+                textbox.addstr(1,1, ''.join(msg))
+                textbox.refresh()
+
         ready_to_read,ready_to_write,in_error = connection.poll()
 
         for sock in ready_to_read:
             data, addr = sock.recvfrom(1024)
             if data:
-                messages.append(("data: %s" % data, curses.A_NORMAL))
+                messages.append(("%s: %s" % (getMachineName(addr[0]),data), curses.A_NORMAL))
             if sock is confserver:
                 if data == "handshake":
                     connection.ack_handshake(confserver,addr)
@@ -158,7 +161,7 @@ def main(stdscr, args):
                     messages.append(("INFO: Você se conectou a rede", curses.A_BOLD))
             else:
                 # Treat message
-                pass
+                messages.append(("s socket", curses.A_NORMAL))
 
         for sock in ready_to_write:
             if connection.has_message(sock):
