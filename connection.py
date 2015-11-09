@@ -47,10 +47,12 @@ class Connection(object):
 
     def put_message(self, sock, msg, addr):
         self.messages[sock].append((msg, addr))
+        logging.debug(self.messages)
 
     def send_message(self, sock):
         # * -> expands tuple as arguments
         sock.sendto(*(self.messages[sock].popleft()))
+        logging.debug(self.messages)
 
     def has_message(self, sock):
         return bool(self.messages[sock])

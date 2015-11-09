@@ -11,6 +11,7 @@ import message
 import time
 import datetime
 import logging
+import ast
 logging.basicConfig(filename='tolkien.log', level=logging.DEBUG)
 
 def parseArgs():
@@ -28,7 +29,6 @@ def printHeader(screen, hostname, ip, status):
     x = screen.getmaxyx()[1]
     title = "### TolkienRing ###"
     screen.addstr(3, (x - len(title))/2, title, curses.A_REVERSE)
-    screen.refresh()
 
 def printMessages(screen, messages):
     yx = screen.getmaxyx()
@@ -40,9 +40,10 @@ def printMachines(screen, machines):
     x = screen.getmaxyx()[1]
     title = "HOSTS"
     screen.addstr(1, (x - len(title))/2, title, curses.A_BOLD)
-    for i in range(0, len(machines)):
-        host = machines[i][0]
-        screen.addstr(i+2, 1, "%d - %s" % (i, getMachineName(host)) )
+    i = 2
+    for host, index in machines.items():
+        screen.addstr(i, 1, "%s - %s" % (index, getMachineName(host[0])))
+        i+=1
 
 def getMachineName(host):
     return socket.gethostbyaddr(host)[0].split('.')[0]
@@ -50,7 +51,7 @@ def getMachineName(host):
 def main(stdscr, args):
     stdscr.nodelay(1)
 
-    machines = []
+    machines = {}
     messages = []
     msg = []
     hostname = socket.gethostname()
@@ -75,7 +76,7 @@ def main(stdscr, args):
     connection.output_sockets = [s,confserver]
     print("after")
 
-    machines.append((host, port, serverPort))
+    machines[(host, port)] = '1'
     printHeader(stdscr, hostname, host, "Desconectado")
     yx = stdscr.getmaxyx()
 
@@ -105,7 +106,7 @@ def main(stdscr, args):
             if chatscreen.getch() == -1:
                 break
 
-        if(len(machines) <= 1):
+        if (len(machines) <= 1) or nextHost == (host, port):
             if key == ord('c'):
                 # Pega informações do host
                 curses.curs_set(1)
@@ -133,44 +134,59 @@ def main(stdscr, args):
                 if (time.time() - t0) >= quantum:
                     connection.send_token(s, nextHost)
                     has_token = False
+                    printHeader(stdscr, hostname, host, "Conectado: Sem Token")
 
         ready_to_read,ready_to_write,in_error = connection.poll()
 
         for sock in ready_to_read:
             data, addr = sock.recvfrom(1024)
             if data:
-                logging.debug("Data received: %s" % data)
+                n = datetime.datetime.now()
+                logging.debug("Data %d:%d:%d: %s" % (n.hour, n.minute, n.second, data))
                 m = message.Message()
                 m.setMessage(data)
-                messages.append(("data: %s" % m.getData(), curses.A_NORMAL))
-                messages.append(("data raw: %s" % m.getReadableMessage(), curses.A_NORMAL))
+                if not m.isToken():
+                    messages.append(("data: %s" % m.getData(), curses.A_NORMAL))
+                    messages.append(("data raw: %s" % m.getReadableMessage(), curses.A_NORMAL))
             if sock is confserver:
                 if m.isHandshake() and not m.isConfiguration():
                     if len(machines) < 4:
                         connection.ack_handshake(confserver, addr, nextHost)
                         nextHost = (addr[0], int(m.getData(), 10))
-                        machines.append(nextHost)
+                        machines[nextHost] = str(len(machines) + 1)
                         messages.append(("INFO: %s se conectou" % getMachineName(addr[0]), curses.A_BOLD))
                         # Se só tem 2 máquinas, é a primeira conexão
                         if len(machines) == 2:
                             connection.send_token(s, nextHost)
+                        conf = message.Message()
+                        conf.setConfiguration()
+                        conf.setOrigin(machines[(host, port)])
+                        conf.setDestiny("5")
+                        conf.setData(str(machines))
+                        connection.put_message(s, conf.getMessage(), nextHost)
 
                 elif m.isHandshake() and m.isConfiguration():
                     otherHost = m.getData()
                     delim_index = otherHost.index(':')
                     nextHost = (otherHost[0:delim_index], int(otherHost[delim_index+1:], 10))
-                    machines.append(nextHost)
                     messages.append(("INFO: Você se conectou a rede", curses.A_BOLD))
+                    printHeader(stdscr, hostname, host, "Conectado")
             else:
                 now = datetime.datetime.now()
                 if m.isToken():
                     has_token = True
-                    messages.append(("INFO: Você tem o bastão. %d:%d:%d" % (now.hour, now.minute, now.second), curses.A_BOLD))
                     t0 = time.time()
+                    printHeader(stdscr, hostname, host, "Conectado: Com token")
+                elif m.isConfiguration():
+                    machines = ast.literal_eval(m.getData())
+                    m.setReceived(machines[(host, port)])
+                    if m.checkParity():
+                        m.setRead(machines[(host, port)])
                 else:
                     messages.append(("%d:%d:%d - %s: %s" % (now.hour, now.minute, now.second, addr[0], m.getData()), curses.A_NORMAL))
-                pass
-
+                if not m.isToken() and m.getOrigin() != machines[(host,port)]:
+                    connection.put_message(s, m.getMessage(), nextHost)
+        
         for sock in ready_to_write:
             if connection.has_message(sock):
                 connection.send_message(sock)
@@ -178,6 +194,7 @@ def main(stdscr, args):
         chatscreen.refresh()
         textbox.refresh()
         machinescreen.refresh()
+        stdscr.refresh()
 
 
 if __name__ == "__main__":

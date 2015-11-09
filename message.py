@@ -84,14 +84,17 @@ class Message(object):
         self.response = chr(response)
 
     def setReceived(self, machine):
+        i = int(machine, 10)
         # machine é o número da máquina no anel (0, 3)
         # O bit mais a esquerda diz que a msg foi recebida
         # O bit mais a direita diz que a msg foi aceita
         # |Resposta|
         # |AABBCCDD|
-        setBitOneFromChr(self.response, machine * 2)
+        self.response = setBitOneFromChr(self.response, i * 2)
+    
     def setRead(self, machine):
-        setBitOneFromChr(self.response, machine * 2 + 1)
+        i = int(machine, 10)
+        self.response = setBitOneFromChr(self.response, i * 2 + 1)
 
     def getControl(self):
         return self.control
