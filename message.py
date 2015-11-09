@@ -25,13 +25,15 @@ def setBitOneFromChr(c, i):
 
 class Message(object):
     def __init__(self):
-        # |TMCHRRRR|
+        # Controle: |TMCHRRRR|
         # T = token, M = monitor, C = configuração, H = handshake, R = reservado
         self.control = chr(0)
-        self.origin = chr(0)
-        self.destiny = chr(0)
-        self.size = 0
-        self.data = chr(0)
+        self.origin = '0'
+        self.destiny = '0'
+        # 3 bytes
+        self.size = '0'
+        self.data = '0'
+        # 4 bytes
         self.parity = chr(0)
         self.response = chr(0)
 
@@ -39,16 +41,16 @@ class Message(object):
         self.control = bitStringToChr(control)
 
     def setToken(self):
-        setBitOneFromChr(self.control, 0)
+        self.control = setBitOneFromChr(self.control, 0)
 
     def setMonitor(self):
-        setBitOneFromChr(self.control, 1)
+        self.control = setBitOneFromChr(self.control, 1)
 
     def setConfiguration(self):
-        setBitOneFromChr(self.control, 2)
+        self.control = setBitOneFromChr(self.control, 2)
 
     def setHandshake(self):
-        setBitOneFromChr(self.control, 3)
+        self.control = setBitOneFromChr(self.control, 3)
 
     def setOrigin(self, origin):
         self.origin = origin
@@ -57,10 +59,19 @@ class Message(object):
         self.destiny = destiny
 
     def setSize(self, size):
-        self.size = size
+        if size <= 4095:
+            self.size = '{0:03x}'.format(size)
+        else:
+            # Throw error
+            pass
 
     def setData(self, data):
-        self.data = data
+        if len(data) <= 4095:
+            self.data = data
+            self.setSize(len(data))
+        else:
+            # Throw error
+            pass
 
     def calcParity(self):
         data = self.getMessageWithoutParity()
@@ -104,7 +115,7 @@ class Message(object):
         return self.destiny
 
     def getSize(self):
-        return self.size
+        return int(self.size, 16)
 
     def getData(self):
         return self.data
@@ -122,6 +133,16 @@ class Message(object):
     def getResponse(self):
         return self.response
 
+    def setMessage(self, message):
+        msgSize = len(message)
+        self.control = message[0]
+        self.origin = message[1]
+        self.destiny = message[2]
+        self.size = message[3:6]
+        self.data = message[6:-5]
+        self.parity = message[-5:-1]
+        self.response = message[-1]
+
     def getMessage(self):
         self.calcParity()
         m = [self.control, self.origin, self.destiny, self.size, self.data, self.parity, self.response]
@@ -131,11 +152,14 @@ class Message(object):
         m = [self.control, self.origin, self.destiny, self.size, self.data]
         return ''.join(m)
 
+    def getReadableMessage(self):
+        m = ['{0:08b}'.format(ord(self.control)), self.origin, self.destiny, self.size, self.data]
+        return '|'.join(m)
+
 def makeHandshake(port):
     data = str(port)
     m = Message()
     m.setHandshake()
-    m.setSize(len(data))
     m.setData(data)
     return m
 
@@ -144,7 +168,6 @@ def makeAckHandshake(host):
     m = Message()
     m.setConfiguration()
     m.setHandshake()
-    m.setSize(len(data))
     m.setData(data)
     return m
 
@@ -161,6 +184,5 @@ def makeMonitor():
 
 def makeMessage(message):
     m = Message()
-    m.setSize(len(message))
     m.setData(message)
     return m

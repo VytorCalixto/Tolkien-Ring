@@ -7,6 +7,11 @@ import sys
 import curses
 import string
 from connection import Connection
+import message
+import time
+import datetime
+import logging
+logging.basicConfig(filename='tolkien.log', level=logging.DEBUG)
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="TolkienRing: Chat em anel de até 4 máquinas", prog="chat")
@@ -50,6 +55,8 @@ def main(stdscr, args):
     msg = []
     hostname = socket.gethostname()
     host = socket.gethostbyname(hostname)
+    has_token = False
+    quantum = 0.25
 
     if args.port == args.serverPort:
         # TODO: mostrar uma mensagem de erro melhor
@@ -84,6 +91,8 @@ def main(stdscr, args):
     messages.append(("INFO: Porta do servidor: %s" % serverPort, curses.A_BOLD))
     messages.append(("INFO: Porta da rede: %s" % port, curses.A_BOLD))
 
+    t0 = 0.0
+
     while True:
         chatscreen.box()
         textbox.box()
@@ -95,6 +104,7 @@ def main(stdscr, args):
         if key == 27:
             if chatscreen.getch() == -1:
                 break
+
         if(len(machines) <= 1):
             if key == ord('c'):
                 # Pega informações do host
@@ -119,25 +129,46 @@ def main(stdscr, args):
                 connection.send_handshake(confserver,nextHost, port)
                 messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
         else:
-            pass
+            if has_token:
+                if (time.time() - t0) >= quantum:
+                    connection.send_token(s, nextHost)
+                    has_token = False
 
         ready_to_read,ready_to_write,in_error = connection.poll()
 
         for sock in ready_to_read:
             data, addr = sock.recvfrom(1024)
             if data:
-                messages.append(("data: %s" % data, curses.A_NORMAL))
+                logging.debug("Data received: %s" % data)
+                m = message.Message()
+                m.setMessage(data)
+                messages.append(("data: %s" % m.getData(), curses.A_NORMAL))
+                messages.append(("data raw: %s" % m.getReadableMessage(), curses.A_NORMAL))
             if sock is confserver:
-                if data == "handshake":
-                    connection.ack_handshake(confserver, addr, nextHost)
-                    nextHost = addr
-                    machines.append(addr)
-                    messages.append(("INFO: %s se conectou" % getMachineName(addr[0]), curses.A_BOLD))
-                elif data == "ok":
-                    machines.append(addr)
+                if m.isHandshake() and not m.isConfiguration():
+                    if len(machines) < 4:
+                        connection.ack_handshake(confserver, addr, nextHost)
+                        nextHost = (addr[0], int(m.getData(), 10))
+                        machines.append(nextHost)
+                        messages.append(("INFO: %s se conectou" % getMachineName(addr[0]), curses.A_BOLD))
+                        # Se só tem 2 máquinas, é a primeira conexão
+                        if len(machines) == 2:
+                            connection.send_token(s, nextHost)
+
+                elif m.isHandshake() and m.isConfiguration():
+                    otherHost = m.getData()
+                    delim_index = otherHost.index(':')
+                    nextHost = (otherHost[0:delim_index], int(otherHost[delim_index+1:], 10))
+                    machines.append(nextHost)
                     messages.append(("INFO: Você se conectou a rede", curses.A_BOLD))
             else:
-                # Treat message
+                now = datetime.datetime.now()
+                if m.isToken():
+                    has_token = True
+                    messages.append(("INFO: Você tem o bastão. %d:%d:%d" % (now.hour, now.minute, now.second), curses.A_BOLD))
+                    t0 = time.time()
+                else:
+                    messages.append(("%d:%d:%d - %s: %s" % (now.hour, now.minute, now.second, addr[0], m.getData()), curses.A_NORMAL))
                 pass
 
         for sock in ready_to_write:

@@ -2,6 +2,9 @@ import socket, select
 import message
 # Recommended for queues on python doc
 from collections import deque
+import logging
+
+logging.basicConfig(filename='tolkien.log', level=logging.DEBUG)
 
 # links interessantes:
 # http://www.bogotobogo.com/python/python_network_programming_tcp_server_client_chat_server_chat_client_select.php
@@ -26,14 +29,21 @@ class Connection(object):
         return select.select(self.input_sockets, self.output_sockets, self.monitor_sockets,0)
 
     def send_handshake(self, sock, addr, port=1337):
-        self.messages[sock].append(("handshake", addr))
         handshake = message.makeHandshake(port)
+        logging.debug("Criando handshake")
+        logging.debug(handshake.getMessage())
         self.messages[sock].append((handshake.getMessage(), addr))
 
     def ack_handshake(self, sock, addr, host):
-        self.messages[sock].append(("ok", addr))
         ack = message.makeAckHandshake(host)
+        logging.debug("Criando ack_handshake")
+        logging.debug(ack.getMessage())
         self.messages[sock].append((ack.getMessage(), addr))
+
+    def send_token(self, sock, addr):
+        token = message.makeToken()
+        logging.debug("Gerando token para enviar")
+        self.messages[sock].append((token.getMessage(), addr))
 
     def put_message(self, sock, msg, addr):
         self.messages[sock].append((msg, addr))
