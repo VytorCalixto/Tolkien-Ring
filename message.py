@@ -5,6 +5,9 @@ from binascii import crc32
 def chrToBitList(c):
     return list('{0:08b}'.format(ord(c)))
 
+def intToBitList(i):
+    return list('{0:08b}'.format(i))
+
 def chrToBitString(c):
     return '{0:08b}'.format(ord(c))
 
@@ -61,9 +64,10 @@ class Message(object):
 
     def calcParity(self):
         data = self.getMessageWithoutParity()
-        #FIXME: crc32 retorna número positivo ou negativo
-        #paridade precisa de 4 caracteres para ser representada
-        self.parity = crc32(data)
+        parity = crc32(data) & 0xffffffff
+        bitList = intToBitList(parity)
+        chrList = [bitListToChar(bitList[0:8]), bitListToChar(bitList[8:16]), bitListToChar(bitList[16:24]), bitListToChar(bitList[24:32])]
+        self.parity = ''.join(chrList)
 
     def setResponse(self, response):
         self.response = chr(response)
@@ -110,7 +114,10 @@ class Message(object):
 
     def checkParity(self):
         data = self.getMessageWithoutParity()
-        return (crc32(data) == self.parity)
+        parity = crc32(data) & 0xffffffff
+        bitList = intToBitList(parity)
+        chrList = [bitListToChar(bitList[0:8]), bitListToChar(bitList[8:16]), bitListToChar(bitList[16:24]), bitListToChar(bitList[24:32])]
+        return (''.join(chrList) == self.parity)
 
     def getResponse(self):
         return self.response
