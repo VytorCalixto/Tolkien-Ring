@@ -1,6 +1,10 @@
 import socket, select
+import message
 # Recommended for queues on python doc
 from collections import deque
+import logging
+
+logging.basicConfig(filename='tolkien.log', level=logging.DEBUG)
 
 class Connection(object):
 
@@ -19,11 +23,21 @@ class Connection(object):
     def poll(self):
         return select.select(self._input_sockets, self._output_sockets, self._monitor_sockets,0)
 
-    def send_handshake(self, sock, addr):
-        self.put_message(sock,"handshake", addr)
+    def send_handshake(self, sock, addr, port=1337):
+        handshake = message.makeHandshake(port)
+        logging.debug("Criando handshake")
+        logging.debug(handshake.getMessage())
+        self.messages[sock].append((handshake.getMessage(), addr))
 
-    def ack_handshake(self, sock, addr):
-        self.put_message(sock,"ok", addr)
+    def ack_handshake(self, sock, addr, host):
+        ack = message.makeAckHandshake(host)
+        logging.debug("Criando ack_handshake")
+        logging.debug(ack.getMessage())
+        self.messages[sock].append((ack.getMessage(), addr))
+
+    def send_token(self, sock, addr):
+        token = message.makeToken()
+        self.messages[sock].append((token.getMessage(), addr))
 
     def put_message(self, sock, msg, addr):
         self.messages[sock].append((msg, addr))
