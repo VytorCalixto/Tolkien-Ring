@@ -119,6 +119,8 @@ def main(stdscr, args):
     lose_token = False
     quantum = 0.25
 
+    lose_token = False
+
     if args.port == args.serverPort:
         # TODO: mostrar uma mensagem de erro melhor
         raise ValueError("O valor da porta de rede não pode ser igual ao do servidor de configuração")
@@ -188,7 +190,7 @@ def main(stdscr, args):
                         c = chr(key)
                         if c == '\n':
                             msg, lose_token = parseUserMessage(msg, messages, machines, (host, port), connection, s, nextHost)
-                        elif c in string.printable and len(msg) <= message.maxSize:
+                        elif c in string.printable:
                             msg.append(c)
                     except ValueError:
                         pass
@@ -202,6 +204,7 @@ def main(stdscr, args):
                     lose_token = False
                     has_token = False
                     logging.debug("Perdi o token")
+                    printHeader(stdscr, hostname, host, "Conectado: Sem Token")
                 elif (time.time() - t0) >= quantum:
                     connection.send_token(s, nextHost)
                     has_token = False
@@ -310,6 +313,7 @@ def main(stdscr, args):
 
         chatscreen.noutrefresh()
         machinescreen.noutrefresh()
+        stdscr.noutrefresh()
         curses.doupdate()
 
 
