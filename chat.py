@@ -107,8 +107,8 @@ def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
 def main(stdscr, args):
     stdscr.nodelay(True)
 
-    connectionTimeout = Timer("conn", 3.0)
-    tokenTimeout = Timer("token", 10.0)
+    connectionTimeout = Timer("conn", 5.0)
+    tokenTimeout = Timer("token", 15.0)
     timeouts = {"conn":connectionTimeout, "token":tokenTimeout}
 
     machines = {}
@@ -235,7 +235,7 @@ def main(stdscr, args):
                 m.setMessage(data)
                 if not m.isToken():
                     logging.debug("Raw data: %s" % m.getReadableMessage())
-                    messages.append(("Raw data: %s" % m.getReadableMessage(), curses.A_NORMAL))
+                    # messages.append(("Raw data: %s" % m.getReadableMessage(), curses.A_NORMAL))
             if sock is confserver:
                 if m.isHandshake() and not m.isConfiguration():
                     if len(machines) < 4:
@@ -278,7 +278,7 @@ def main(stdscr, args):
                         m.setRead(machines[(host, port)])
                         logging.debug("Machines: %s" % str(machines))
                 else:
-                    if m.getDestiny() == machines[(host, port)] or m.getDestiny() == "5":
+                    if m.getDestiny() == machines[(host, port)] or m.getDestiny() == "5" and m.getOrigin() != machines[(host, port)]:
                         if m.checkParity():
                             m.setRead(machines[(host, port)])
                             hour = '{:%H:%M:%S}'.format(now)
@@ -297,7 +297,7 @@ def main(stdscr, args):
                     else:
                         is_received = m.getReceived(m.getOrigin())
                         is_read = m.getRead(m.getOrigin())
-                    messages.append(("INFO: r:%r l:%r - %s" % (is_received, is_read, m.getData()), curses.A_BOLD))
+                    # messages.append(("INFO: r:%r l:%r - %s" % (is_received, is_read, m.getData()), curses.A_BOLD))
                     #if not is_read or not is_received:
                         #connection.put_message(s, m.getMessage(), nextHost)
                 if not m.isToken() and m.getOrigin() != machines[(host, port)]:
