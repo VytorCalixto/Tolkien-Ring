@@ -69,18 +69,25 @@ def connectToMachine(textbox):
     textbox.nodelay(True)
     return (socket.gethostbyname(n), int(p, 10)) if n and p else False
 
-def parseUserMessage(msg, messages, machines):
-    if msg[0] == '/':
-        action = msg[1:]
+def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
+    s = ''.join(msg)
+    s.strip(string.whitespace)
+    if s[0] == '/':
+        action = s[1:]
         if action == "quit":
             sys.exit(0)
-    try:
+        elif action == "token":
+            pass
+     try:
         delim_index = msg.index(':')
         machine_index = ''.join(msg[0:delim_index])
+        machine_index.strip(string.whitespace)
         if machine_index != 0:
             m = message.Message()
-            m.setData(''.join(msg[delim_index+1:]))
-            m.setOrigin(machines[(host, port)])
+            data = ''.join(msg[delim_index+1:])
+            data.strip(string.whitespace)
+            m.setData(data)
+            m.setOrigin(machines[host])
             m.setDestiny(machine_index)
             messages.append(("Você para %s: %s" % (machine_index, m.getData()), curses.A_NORMAL))
             connection.put_message(s, m.getMessage(), nextHost)
@@ -169,7 +176,7 @@ def main(stdscr, args):
                     try:
                         c = chr(key)
                         if c == '\n':
-                            msg = parseUserMessage(msg, messages, machines)
+                            msg = parseUserMessage(msg, messages, machines, (host, port), connection, s, nextHost)
                         elif c in string.printable:
                             msg.append(c)
                     except ValueError:
