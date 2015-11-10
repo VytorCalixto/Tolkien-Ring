@@ -82,7 +82,7 @@ def main(stdscr, args):
     chatscreen = stdscr.subpad(yx[0]-7, yx[1]-20, 4, 0)
     machinescreen = stdscr.subwin(yx[0]-7, 18, 4, yx[1]-19)
     textbox = stdscr.subwin(3, yx[1]-1, yx[0]-3, 0)
-    
+
     textbox.nodelay(True)
     curses.curs_set(0)
 
@@ -91,7 +91,7 @@ def main(stdscr, args):
     messages.append(("INFO: Nome da máquina: %s" % hostname, curses.A_BOLD))
     messages.append(("INFO: Porta do servidor: %s" % serverPort, curses.A_BOLD))
     messages.append(("INFO: Porta da rede: %s" % port, curses.A_BOLD))
-   
+
     curses.cbreak()
 
     t0 = 0.0
@@ -158,6 +158,7 @@ def main(stdscr, args):
             # textbox.box()
             textbox.addstr(1,1, ''.join(msg))
             textbox.noutrefresh()
+            
             if has_token:
                 if (time.time() - t0) >= quantum:
                     connection.send_token(s, nextHost)
@@ -217,10 +218,11 @@ def main(stdscr, args):
                             m.setRead(machines[(host, port)])
                 if not m.isToken() and m.getOrigin() != machines[(host,port)]:
                     connection.put_message(s, m.getMessage(), nextHost)
-        
-        for sock in ready_to_write:
-            if connection.has_message(sock):
-                connection.send_message(sock)
+
+        if has_token or len(machine) < 2:
+            for sock in ready_to_write:
+                if connection.has_message(sock):
+                    connection.send_message(sock)
 
         chatscreen.noutrefresh()
         machinescreen.noutrefresh()
