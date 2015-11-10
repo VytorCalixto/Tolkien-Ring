@@ -105,9 +105,9 @@ def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
 def main(stdscr, args):
     stdscr.nodelay(True)
 
-    connectionTimeout = Timer("conn", 5.0)
+    connectionTimeout = Timer("conn", 3.0)
     tokenTimeout = Timer("token", 5.0)
-    msgTimeout = Timer("msg", 1.5)
+    msgTimeout = Timer("msg", 2.0)
     timeouts = {"conn":connectionTimeout, "token":tokenTimeout, "msg":msgTimeout}
 
     machines = {}
@@ -262,15 +262,19 @@ def main(stdscr, args):
             else:
                 m.setReceived(machines[(host, port)])
                 now = datetime.datetime.now()
-                is_received = False
-                is_read = False
+                is_received = True
+                is_read = True
                 is_owner = m.getOrigin() == machines[(host, port)]
                 if is_owner:
                     timeouts["msg"].reset()
                     has_msg_on_ring = False
                     if m.getDestiny() == "5":
-                        if m.getAllReceived(machines[(host, port)]) and m.getAllRead(machines[(host, port)]):
-                            is_received = is_read = True
+                        for host, index in machine.items():
+                            if index != machines[(host, port)]:
+                                if not m.getReceived(index):
+                                    is_received = False
+                                if not m.getRead(index):
+                                    is_read = False
                     else:
                         is_received = m.getReceived(m.getOrigin())
                         is_read = m.getRead(m.getOrigin())
@@ -302,7 +306,7 @@ def main(stdscr, args):
             if sock is confserver or len(machines) < 2:
                 if connection.has_message(sock):
                     connection.send_message(sock)
-            elif has_token and not has_msg_on_ring:
+            elif has_token:
                 if connection.has_message(sock):
                     connection.send_message(sock)
                     has_msg_on_ring = True
