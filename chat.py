@@ -91,15 +91,16 @@ def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
     except Exception, e:
         s = ''.join(msg)
         s.strip(string.whitespace)
-        if s[0] == '/':
-            action = s[1:]
-            if action == "quit":
-                sys.exit(0)
-            elif action == "token":
-                lose_token = True
-        else:
-            messages.append(("ERRO: A mensagem deve ter o formato: <host>:<mensagem>\n%s"%e, curses.A_BOLD))
-            logging.debug(e)
+        if s:
+            if s[0] == '/':
+                action = s[1:]
+                if action == "quit":
+                    sys.exit(0)
+                elif action == "token":
+                    lose_token = True
+            else:
+                messages.append(("ERRO: A mensagem deve ter o formato: <host>:<mensagem>\n%s"%e, curses.A_BOLD))
+                logging.debug(e)
     finally:
         msg = []
     return (msg, lose_token)
