@@ -208,10 +208,13 @@ def main(stdscr, args):
             if t.hasTimedOut():
                 if t is connectionTimeout:
                     messages.append(("INFO: Não foi possível se conectar. Tente novamente.", curses.A_BOLD))
+                    timeouts["conn"].reset()
                 elif t is tokenTimeout:
                     connection.send_token(s, nextHost, True)
+                    timeouts["token"].reset()
                 elif t is msgTimeout:
                     messages.append(("INFO: A mensagem não chegou ao destino. Talvez haja um problema com a rede.", curses.A_BOLD))
+                    timeouts["msg"].reset()
 
         ready_to_read,ready_to_write,in_error = connection.poll()
 
