@@ -49,26 +49,6 @@ def printMachines(screen, machines):
 def getMachineName(host):
     return socket.gethostbyaddr(host)[0].split('.')[0]
 
-def getNextHost(screen):
-    curses.echo()
-    screen.nodelay(False)
-    # Pega informações do host
-    screen.addstr(0, 1, "Digite o nome da máquina:")
-    screen.refresh()
-    name = screen.getstr(1,1)
-    screen.clear()
-    screen.box()
-    screen.refresh()
-    screen.addstr(0, 1, "Digite a porta (a porta padrão é 5050):")
-    screen.refresh()
-    port = screen.getstr(1,1)
-    screen.clear()
-    screen.box()
-    screen.refresh()
-    curses.noecho()
-    screen.nodelay(True)
-    return (socket.gethostbyname(name), int(port))
-
 def main(stdscr, args):
     stdscr.nodelay(True)
 
@@ -92,8 +72,8 @@ def main(stdscr, args):
     connection = Connection()
     s = connection.open_socket(host, port)
     confserver = connection.open_socket(host, serverPort)
-    connection.input_sockets = [s,confserver]
-    connection.output_sockets = [s,confserver]
+    connection.input_sockets = [confserver,s]
+    connection.output_sockets = [confserver,s]
 
     machines[(host, port)] = '1'
     printHeader(stdscr, hostname, host, "Desconectado")
@@ -104,7 +84,6 @@ def main(stdscr, args):
     textbox = stdscr.subwin(3, yx[1]-1, yx[0]-3, 0)
     
     textbox.nodelay(True)
-    chatscreen.nodelay(True)
     curses.curs_set(0)
 
     messages.append(("INFO: Você não está conectado", curses.A_BOLD))
@@ -126,8 +105,8 @@ def main(stdscr, args):
         if len(machines) <= 1 or nextHost == (host, port):
             key = stdscr.getch()
             if key == ord('c'):
-                textbox.nodelay(False)
                 # Pega informações do host
+                textbox.nodelay(False)
                 curses.echo()
                 textbox.addstr(0, 1, "Digite o nome da máquina:")
                 textbox.refresh()
@@ -147,7 +126,6 @@ def main(stdscr, args):
                 # Send handshake
                 connection.send_handshake(confserver,nextHost, port)
                 messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
-                
         else:
             key = textbox.getch()
             if key != -1:
@@ -176,10 +154,10 @@ def main(stdscr, args):
                             msg.append(c)
                     except ValueError:
                         pass
-                textbox.clear()
-                textbox.box()
-                textbox.addstr(1,1, ''.join(msg))
-                textbox.refresh()
+            # textbox.clear()
+            # textbox.box()
+            textbox.addstr(1,1, ''.join(msg))
+            textbox.noutrefresh()
             if has_token:
                 if (time.time() - t0) >= quantum:
                     connection.send_token(s, nextHost)
@@ -214,20 +192,12 @@ def main(stdscr, args):
                         conf.setDestiny("5")
                         conf.setData(str(machines))
                         connection.put_message(confserver, conf.getMessage(), nextHost)
-
                 elif m.isHandshake() and m.isConfiguration():
                     otherHost = m.getData()
                     delim_index = otherHost.index(':')
                     nextHost = (otherHost[0:delim_index], int(otherHost[delim_index+1:], 10))
                     messages.append(("INFO: Você se conectou a rede", curses.A_BOLD))
                     printHeader(stdscr, hostname, host, "Conectado")
-                    if len(machines) > 2:
-                        conf = message.Message()
-                        conf.setConfiguration()
-                        conf.setOrigin(machines[(host, port)])
-                        conf.setDestiny("5")
-                        conf.setData(str(machines))
-                        connection.put_message(s, conf.getMessage(), nextHost)
             else:
                 m.setReceived(machines[(host, port)])
                 now = datetime.datetime.now()
@@ -252,10 +222,9 @@ def main(stdscr, args):
             if connection.has_message(sock):
                 connection.send_message(sock)
 
-        chatscreen.refresh()
-        textbox.refresh()
-        machinescreen.refresh()
-        #stdscr.refresh()
+        chatscreen.noutrefresh()
+        machinescreen.noutrefresh()
+        curses.doupdate()
 
 
 if __name__ == "__main__":
