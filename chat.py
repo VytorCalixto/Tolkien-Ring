@@ -12,7 +12,7 @@ import time
 import datetime
 import logging
 import ast
-import timeout
+from timeout import Timer
 
 logging.basicConfig(filename='tolkien.log', level=logging.DEBUG)
 
@@ -52,7 +52,6 @@ def printMachines(screen, machines):
 def getMachineName(host):
     return socket.gethostbyaddr(host)[0].split('.')[0]
 
-@timeout(10)
 def connectToMachine(textbox):
     textbox.nodelay(False)
     curses.echo()
@@ -105,11 +104,17 @@ def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
 def main(stdscr, args):
     stdscr.nodelay(True)
 
+    connectionTimeout = Timer("conn", 5.0)
+    tokenTimeout = Timer("token", 3.0)
+    msgTimeout = Timer("msg", 3.0)
+    timeouts = {"conn":connectionTimeout, "token":tokenTimeout, "msg":msgTimeout}
+
     machines = {}
     messages = []
     msg = []
     hostname = socket.gethostname()
     host = socket.gethostbyname(hostname)
+    has_msg_on_ring = False
     has_token = False
     quantum = 0.25
 
@@ -169,6 +174,7 @@ def main(stdscr, args):
                 if nextHost:
                     connection.send_handshake(confserver, nextHost, port)
                     messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
+                    timeouts["conn"].start()
                 else:
                     nextHost = (host, port)
         else:
@@ -187,14 +193,25 @@ def main(stdscr, args):
                         pass
             # textbox.clear()
             # textbox.box()
-            textbox.addstr(1,1, ''.join(msg))
+            textbox.addstr(1, 1, ''.join(msg[-(textbox.getmaxyx()[1]-2):]))
             textbox.noutrefresh()
 
             if has_token:
                 if (time.time() - t0) >= quantum:
                     connection.send_token(s, nextHost)
                     has_token = False
+                    timeouts["token"].start()
                     printHeader(stdscr, hostname, host, "Conectado: Sem Token")
+
+        # Checa os timeouts
+        for name, t in timeouts.items():
+            if t.hasTimedOut():
+                if t is connectionTimeout:
+                    messages.append(("INFO: Não foi possível se conectar. Tente novamente.", curses.A_BOLD))
+                elif t is tokenTimeout:
+                    connection.send_token(s, nextHost, True)
+                elif t is msgTimeout:
+                    messages.append(("INFO: A mensagem não chegou ao destino. Talvez haja um problema com a rede.", curses.A_BOLD))
 
         ready_to_read,ready_to_write,in_error = connection.poll()
 
@@ -205,9 +222,8 @@ def main(stdscr, args):
                 logging.debug("Data %d:%d:%d: %s" % (n.hour, n.minute, n.second, data))
                 m = message.Message()
                 m.setMessage(data)
-                # if not m.isToken():
-                    # messages.append(("data: %s" % m.getData(), curses.A_NORMAL))
-                    # messages.append(("data raw: %s" % m.getReadableMessage(), curses.A_NORMAL))
+                if not m.isToken():
+                    logging.debug("Raw data: %s" % m.getReadableMessage())
             if sock is confserver:
                 if m.isHandshake() and not m.isConfiguration():
                     if len(machines) < 4:
@@ -225,6 +241,8 @@ def main(stdscr, args):
                         conf.setData(str(machines))
                         connection.put_message(confserver, conf.getMessage(), nextHost)
                 elif m.isHandshake() and m.isConfiguration():
+                    # Recebeu um ack_handshake
+                    timeouts["conn"].reset()
                     otherHost = m.getData()
                     delim_index = otherHost.index(':')
                     nextHost = (otherHost[0:delim_index], int(otherHost[delim_index+1:], 10))
@@ -233,33 +251,45 @@ def main(stdscr, args):
             else:
                 m.setReceived(machines[(host, port)])
                 now = datetime.datetime.now()
+                is_received = False
+                is_read = False
+                if m.getOrigin() == machines[(host, port)]:
+                    timeouts["msg"].reset()
+                    has_msg_on_ring = False
+                    if m.getDestiny() == "5":
+                        if m.getAllReceived(machines[(host, port)]) and m.getAllRead(machines[(host, port)]):
+                            is_received = is_read = True
+                    else:
+                        is_received = m.getReceived(int(m.getOrigin()))
+                        is_read = m.getRead(int(m.getOrigin()))
                 if m.isToken():
+                    timeouts["token"].reset()
                     has_token = True
                     t0 = time.time()
                     printHeader(stdscr, hostname, host, "Conectado: Com token")
                 elif m.isConfiguration():
-                    machines = ast.literal_eval(m.getData())
-                    logging.debug("Machines: %s" % str(machines))
                     if m.checkParity():
+                        machines = ast.literal_eval(m.getData())
                         m.setRead(machines[(host, port)])
+                        logging.debug("Machines: %s" % str(machines))
                 else:
                     if m.getDestiny() == machines[(host, port)] or m.getDestiny() == "5":
-                        hour = '{:%H:%M:%S}'.format(now)
-                        messages.append(("%s-%s: %s" % (hour, getMachineName(addr[0]), m.getData()), curses.A_NORMAL))
                         if m.checkParity():
                             m.setRead(machines[(host, port)])
-                if not m.isToken() and m.getOrigin() != machines[(host,port)]:
+                            hour = '{:%H:%M:%S}'.format(now)
+                            messages.append(("%s-%s: %s" % (hour, getMachineName(addr[0]), m.getData()), curses.A_NORMAL))
+                if (not m.isToken() and not m.isMonitor()) and (m.getOrigin() != machines[(host,port)]) or not is_read or not is_received:
                     connection.put_message(s, m.getMessage(), nextHost)
 
-
         for sock in ready_to_write:
-            if sock is confserver:
+            if sock is confserver or len(machines) < 2:
                 if connection.has_message(sock):
                     connection.send_message(sock)
-            else:
-                if has_token or len(machines) < 2:
-                    if connection.has_message(sock):
-                        connection.send_message(sock)
+            elif has_token and not has_msg_on_ring:
+                if connection.has_message(sock):
+                    connection.send_message(sock)
+                    has_msg_on_ring = True
+                    timeouts["msg"].start()
 
         chatscreen.noutrefresh()
         machinescreen.noutrefresh()

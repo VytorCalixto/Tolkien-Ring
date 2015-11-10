@@ -91,7 +91,7 @@ class Message(object):
         # |Resposta|
         # |AABBCCDD|
         self.response = setBitOneFromChr(self.response, i * 2)
-    
+
     def setRead(self, machine):
         i = int(machine, 10) - 1
         self.response = setBitOneFromChr(self.response, i * 2 + 1)
@@ -135,6 +135,37 @@ class Message(object):
 
     def getResponse(self):
         return self.response
+
+    def getReceived(self, machine):
+        i = int(machine, 10) - 1
+        return chrToBitString(self.response)[i*2] == "1"
+
+    def getAllReceived(self, machine):
+        # machine é a máquina que enviou
+        i = int(machine, 10) - 1
+        m = [0, 1, 2, 3]
+        del m[i]
+        response = chrToBitString(self.response)
+        for r in m:
+            if response[r*2] == "0":
+                return False
+        return True
+
+
+    def getRead(self, machine):
+        i = int(machine, 10) - 1
+        return chrToBitString(self.response)[i*2 + 1] == "1"
+
+    def getAllRead(self, machine):
+        # machine é a máquina que enviou
+        i = int(machine, 10) - 1
+        m = [0, 1, 2, 3]
+        del m[i]
+        response = chrToBitString(self.response)
+        for r in m:
+            if response[r*2 + 1] == "0":
+                return False
+        return True
 
     def setMessage(self, message):
         msgSize = len(message)
