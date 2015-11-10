@@ -180,8 +180,8 @@ def main(stdscr, args):
                 m = message.Message()
                 m.setMessage(data)
                 if not m.isToken():
-                    messages.append(("data: %s" % m.getData(), curses.A_NORMAL))
-                    messages.append(("data raw: %s" % m.getReadableMessage(), curses.A_NORMAL))
+                    # messages.append(("data: %s" % m.getData(), curses.A_NORMAL))
+                    # messages.append(("data raw: %s" % m.getReadableMessage(), curses.A_NORMAL))
             if sock is confserver:
                 if m.isHandshake() and not m.isConfiguration():
                     if len(machines) < 4:
