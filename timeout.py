@@ -26,10 +26,6 @@ class Timer(object):
     def start(self):
         self.time = time.time()
         self.active = True
-    def start(self, maxTime):
-        self.time = time.time()
-        self.maxTime = maxTime
-        self.active = False
     def hasTimedOut(self):
         self.timeout = (time.time() - self.time) >= self.maxTime
         return self.timeout and self.active
