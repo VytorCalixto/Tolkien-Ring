@@ -261,25 +261,8 @@ def main(stdscr, args):
                     printHeader(stdscr, hostname, host, "Conectado")
             else:
                 m.setReceived(machines[(host, port)])
-                now = datetime.datetime.now()
-                is_received = True
-                is_read = True
                 is_owner = m.getOrigin() == machines[(host, port)]
-                if is_owner:
-                    timeouts["msg"].reset()
-                    has_msg_on_ring = False
-                    if m.getDestiny() == "5":
-                        for host, index in machine.items():
-                            if index != machines[(host, port)]:
-                                if not m.getReceived(index):
-                                    is_received = False
-                                if not m.getRead(index):
-                                    is_read = False
-                    else:
-                        is_received = m.getReceived(m.getOrigin())
-                        is_read = m.getRead(m.getOrigin())
-                    if not is_read or not is_received:
-                        connection.put_message(s, m.getMessage(), nextHost)
+                now = datetime.datetime.now()
                 if m.isToken():
                     timeouts["token"].reset()
                     has_token = True
@@ -299,6 +282,23 @@ def main(stdscr, args):
                             m.setRead(machines[(host, port)])
                             hour = '{:%H:%M:%S}'.format(now)
                             messages.append(("%s-%s: %s" % (hour, getMachineName(addr[0]), m.getData()), curses.A_NORMAL))
+                is_received = True
+                is_read = True
+                if is_owner:
+                    timeouts["msg"].reset()
+                    has_msg_on_ring = False
+                    if m.getDestiny() == "5":
+                        for h, index in machines.items():
+                            if index != machines[h]:
+                                if not m.getReceived(index):
+                                    is_received = False
+                                if not m.getRead(index):
+                                    is_read = False
+                    else:
+                        is_received = m.getReceived(m.getOrigin())
+                        is_read = m.getRead(m.getOrigin())
+                    if not is_read or not is_received:
+                        connection.put_message(s, m.getMessage(), nextHost)
                 if not m.isToken() and not is_owner:
                     connection.put_message(s, m.getMessage(), nextHost)
 
