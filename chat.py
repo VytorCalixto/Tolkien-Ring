@@ -31,7 +31,7 @@ def printHeader(screen, hostname, ip, status):
     screen.addstr(3, (x - len(title))/2, title, curses.A_REVERSE)
 
 def printMessages(screen, messages):
-    y = screen.getmaxyx()[0]
+    y = screen.getmaxyx()[0] - 2 #-2 pelas bordas
     for i in messages[-y:]:
         screen.addstr(i+1, 1, messages[i][0], messages[i][1])
 
