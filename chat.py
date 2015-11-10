@@ -192,8 +192,6 @@ def main(stdscr, args):
                             msg.append(c)
                     except ValueError:
                         pass
-            # textbox.clear()
-            # textbox.box()
             textbox.addstr(1, 1, ''.join(msg[-(textbox.getmaxyx()[1]-2):]))
             textbox.noutrefresh()
 
@@ -217,7 +215,7 @@ def main(stdscr, args):
                     timeouts["conn"].reset()
                 elif t is tokenTimeout:
                     messages.append(("INFO: Token Timeout", curses.A_BOLD))
-                    connection.send_token(confserver, nextHost, True, machines[(host, port)])
+                    connection.send_token(s, nextHost, True, machines[(host, port)])
                     timeouts["token"].start()
 
         ready_to_read,ready_to_write,in_error = connection.poll()
@@ -241,7 +239,7 @@ def main(stdscr, args):
                         printHeader(stdscr, hostname, host, "Conectado")
                         # Se só tem 2 máquinas, é a primeira conexão
                         if len(machines) == 2:
-                            connection.send_token(confserver, nextHost)
+                            connection.send_token(s, nextHost)
                             timeouts["token"].start()
                         conf = message.Message()
                         conf.setConfiguration()
@@ -300,10 +298,14 @@ def main(stdscr, args):
 
         for sock in ready_to_write:
             if sock is s:
-                if has_token:
-                    if connection.has_message(sock):
+                if connection.has_message(sock):
+                    m = message.Message()
+                    m.setMessage(connection.messages[sock][0][0])
+                    if has_token or m.isToken():
                         connection.send_message(sock)
                         has_msg_on_ring = True
+
+
             else:
                 if connection.has_message(sock):
                     connection.send_message(sock)

@@ -72,7 +72,6 @@ class Connection(object):
     def output_sockets(self, value):
         self._output_sockets = value
         for s in value:
-            print(s)
             self.messages[s] = deque()
 
     @property
