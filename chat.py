@@ -69,6 +69,28 @@ def connectToMachine(textbox):
     textbox.nodelay(True)
     return (socket.gethostbyname(n), int(p, 10)) if n and p else False
 
+def parseUserMessage(msg, messages):
+    if msg[0] == '/':
+        action = msg[1:]
+        if action == "quit":
+            sys.exit(0)
+    try:
+        delim_index = msg.index(':')
+        machine_index = ''.join(msg[0:delim_index])
+        if machine_index != 0:
+            m = message.Message()
+            m.setData(''.join(msg[delim_index+1:]))
+            m.setOrigin(machines[(host, port)])
+            m.setDestiny(machine_index)
+            messages.append(("Você para %s: %s" % (machine_index, m.getData()), curses.A_NORMAL))
+            connection.put_message(s, m.getMessage(), nextHost)
+    except Exception, e:
+        messages.append(("ERRO: A mensagem deve ter o formato: <host>:<mensagem>\n%s"%e, curses.A_BOLD))
+        logging.debug(e)
+    finally:
+        msg = []
+    return msg
+
 def main(stdscr, args):
     stdscr.nodelay(True)
 
@@ -147,21 +169,7 @@ def main(stdscr, args):
                     try:
                         c = chr(key)
                         if c == '\n':
-                            try:
-                                delim_index = msg.index(':')
-                                machine_index = ''.join(msg[0:delim_index])
-                                if machine_index != 0:
-                                    m = message.Message()
-                                    m.setData(''.join(msg[delim_index+1:]))
-                                    m.setOrigin(machines[(host, port)])
-                                    m.setDestiny(machine_index)
-                                    messages.append(("Você para %s: %s" % (machine_index, m.getData()), curses.A_NORMAL))
-                                    connection.put_message(s, m.getMessage(), nextHost)
-                            except Exception, e:
-                                messages.append(("ERRO: A mensagem deve ter o formato: <host>:<mensagem>\n%s"%e, curses.A_BOLD))
-                                logging.debug(e)
-                            finally:
-                                msg = []
+                            msg = parseUserMessage(msg, messages)
                         elif c in string.printable:
                             msg.append(c)
                     except ValueError:
@@ -224,7 +232,8 @@ def main(stdscr, args):
                         m.setRead(machines[(host, port)])
                 else:
                     if m.getDestiny() == machines[(host, port)] or m.getDestiny() == "5":
-                        messages.append(("%d:%d:%d - %s: %s" % (now.hour, now.minute, now.second, addr[0], m.getData()), curses.A_NORMAL))
+                        hour = '{:%H:%M:%S}'.format(now)
+                        messages.append(("%s-%s: %s" % (hour, getMachineName(addr[0]), m.getData()), curses.A_NORMAL))
                         if m.checkParity():
                             m.setRead(machines[(host, port)])
                 if not m.isToken() and m.getOrigin() != machines[(host,port)]:
