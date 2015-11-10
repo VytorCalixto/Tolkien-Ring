@@ -106,7 +106,7 @@ def main(stdscr, args):
     stdscr.nodelay(True)
 
     connectionTimeout = Timer("conn", 5.0)
-    tokenTimeout = Timer("token", 3.0)
+    tokenTimeout = Timer("token", 5.0)
     msgTimeout = Timer("msg", 1.5)
     timeouts = {"conn":connectionTimeout, "token":tokenTimeout, "msg":msgTimeout}
 
@@ -244,7 +244,7 @@ def main(stdscr, args):
                         messages.append(("INFO: %s se conectou" % getMachineName(addr[0]), curses.A_BOLD))
                         # Se só tem 2 máquinas, é a primeira conexão
                         if len(machines) == 2:
-                            has_token = True
+                            connection.send_token(confserver, nextHost)
                         conf = message.Message()
                         conf.setConfiguration()
                         conf.setOrigin(machines[(host, port)])
