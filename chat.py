@@ -71,8 +71,10 @@ def connectToMachine(textbox):
     textbox.nodelay(True)
     return (socket.gethostbyname(n), int(p, 10)) if n and p else False
 
+
 def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
     lose_token = False
+
     try:
         delim_index = msg.index(':')
         machine_index = ''.join(msg[0:delim_index])
@@ -106,7 +108,7 @@ def main(stdscr, args):
     stdscr.nodelay(True)
 
     connectionTimeout = Timer("conn", 3.0)
-    tokenTimeout = Timer("token", 5.0)
+    tokenTimeout = Timer("token", 10.0)
     timeouts = {"conn":connectionTimeout, "token":tokenTimeout}
 
     machines = {}
@@ -118,6 +120,8 @@ def main(stdscr, args):
     has_token = False
     lose_token = False
     quantum = 0.25
+
+    lose_token = False
 
     if args.port == args.serverPort:
         # TODO: mostrar uma mensagem de erro melhor
@@ -197,9 +201,12 @@ def main(stdscr, args):
 
             if has_token:
                 if lose_token:
+
                     lose_token = False
                     has_token = False
                     logging.debug("Perdi o token")
+                    printHeader(stdscr, hostname, host, "Conectado: Sem Token")
+
                 elif (time.time() - t0) >= quantum:
                     connection.send_token(s, nextHost)
                     has_token = False
@@ -275,7 +282,7 @@ def main(stdscr, args):
                         if m.checkParity():
                             m.setRead(machines[(host, port)])
                             hour = '{:%H:%M:%S}'.format(now)
-                            messages.append(("%s-%s: %s" % (hour, getMachineName(addr[0]), m.getData()), curses.A_NORMAL))
+                            messages.append(("%s-%s: %s" % (hour, m.getOrigin(), m.getData()), curses.A_NORMAL))
                 if m.getOrigin() == machines[(host, port)]:
                     is_received = True
                     is_read = True
@@ -312,6 +319,7 @@ def main(stdscr, args):
 
         chatscreen.noutrefresh()
         machinescreen.noutrefresh()
+        stdscr.noutrefresh()
         curses.doupdate()
 
 
