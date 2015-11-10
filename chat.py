@@ -158,7 +158,7 @@ def main(stdscr, args):
             # textbox.box()
             textbox.addstr(1,1, ''.join(msg))
             textbox.noutrefresh()
-            
+
             if has_token:
                 if (time.time() - t0) >= quantum:
                     connection.send_token(s, nextHost)
@@ -219,7 +219,7 @@ def main(stdscr, args):
                 if not m.isToken() and m.getOrigin() != machines[(host,port)]:
                     connection.put_message(s, m.getMessage(), nextHost)
 
-        if has_token or len(machine) < 2:
+        if has_token or len(machines) < 2:
             for sock in ready_to_write:
                 if connection.has_message(sock):
                     connection.send_message(sock)
