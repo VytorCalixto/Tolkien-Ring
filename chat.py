@@ -202,11 +202,13 @@ def main(stdscr, args):
                 if lose_token:
                     lose_token = False
                     has_token = False
+                    logging.debug("Perdi o token")
                 elif (time.time() - t0) >= quantum:
                     connection.send_token(s, nextHost)
                     has_token = False
                     timeouts["token"].start()
                     printHeader(stdscr, hostname, host, "Conectado: Sem Token")
+                    logging.debud("Enviei o token")
 
         # Checa os timeouts
         for name, t in timeouts.items():
@@ -215,6 +217,7 @@ def main(stdscr, args):
                     messages.append(("INFO: Não foi possível se conectar. Tente novamente.", curses.A_BOLD))
                     timeouts["conn"].reset()
                 elif t is tokenTimeout:
+                    messages.append(("INFO: Token Timeout", curses.A_BOLD))
                     connection.send_token(s, nextHost, True, machines[(host, port)])
                     timeouts["token"].reset()
                 elif t is msgTimeout:
@@ -232,6 +235,7 @@ def main(stdscr, args):
                 m.setMessage(data)
                 if not m.isToken():
                     logging.debug("Raw data: %s" % m.getReadableMessage())
+                    messages.append(("Raw data: %s" % m.getReadableMessage(), curses.A_NORMAL))
             if sock is confserver:
                 if m.isHandshake() and not m.isConfiguration():
                     if len(machines) < 4:
@@ -242,6 +246,7 @@ def main(stdscr, args):
                         # Se só tem 2 máquinas, é a primeira conexão
                         if len(machines) == 2:
                             connection.send_token(s, nextHost)
+                            timeouts["token"].start()
                         conf = message.Message()
                         conf.setConfiguration()
                         conf.setOrigin(machines[(host, port)])
@@ -271,11 +276,14 @@ def main(stdscr, args):
                     else:
                         is_received = m.getReceived(int(m.getOrigin()))
                         is_read = m.getRead(int(m.getOrigin()))
+                    if not is_read or not is_received:
+                        connection.put_message(s, m.getMessage(), nextHost)
                 if m.isToken():
                     timeouts["token"].reset()
                     has_token = True
                     t0 = time.time()
                     printHeader(stdscr, hostname, host, "Conectado: Com token")
+                    messages.append(("Token", curses.A_BOLD))
                     if m.isMonitor() and not is_owner:
                         connection.put_message(s, m.getMessage(), nextHost)
                 elif m.isConfiguration():
@@ -289,7 +297,7 @@ def main(stdscr, args):
                             m.setRead(machines[(host, port)])
                             hour = '{:%H:%M:%S}'.format(now)
                             messages.append(("%s-%s: %s" % (hour, getMachineName(addr[0]), m.getData()), curses.A_NORMAL))
-                if not is_read or not is_received or not is_owner:
+                if not m.isToken() and not is_owner:
                     connection.put_message(s, m.getMessage(), nextHost)
 
         for sock in ready_to_write:
