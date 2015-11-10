@@ -78,7 +78,7 @@ def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
             sys.exit(0)
         elif action == "token":
             pass
-     try:
+    try:
         delim_index = msg.index(':')
         machine_index = ''.join(msg[0:delim_index])
         machine_index.strip(string.whitespace)
