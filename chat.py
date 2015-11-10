@@ -12,6 +12,8 @@ import time
 import datetime
 import logging
 import ast
+import timeout
+
 logging.basicConfig(filename='tolkien.log', level=logging.DEBUG)
 
 def parseArgs():
@@ -31,10 +33,11 @@ def printHeader(screen, hostname, ip, status):
     screen.addstr(3, (x - len(title))/2, title, curses.A_REVERSE)
 
 def printMessages(screen, messages):
-    yx = screen.getmaxyx()
-    topRange = len(messages) if ((yx[0]-2) > len(messages)) else (yx[0]-2)
-    for i in range(0, topRange):
-        screen.addstr(i+1, 1, messages[i][0], messages[i][1])
+    y = screen.getmaxyx()[0] - 2 #-2 pelas bordas
+    i = 1
+    for msg in messages[-y:]:
+        screen.addstr(i, 1, msg[0], msg[1])
+        i+=1
 
 def printMachines(screen, machines):
     x = screen.getmaxyx()[1]
@@ -48,6 +51,56 @@ def printMachines(screen, machines):
 
 def getMachineName(host):
     return socket.gethostbyaddr(host)[0].split('.')[0]
+
+@timeout(10)
+def connectToMachine(textbox):
+    textbox.nodelay(False)
+    curses.echo()
+    textbox.addstr(0, 1, "Digite o nome da máquina:")
+    textbox.refresh()
+    n = textbox.getstr(1, 1)
+    textbox.clear()
+    textbox.box()
+    textbox.refresh()
+    textbox.addstr(0, 1, "Digite a porta (a porta padrão é 5050):")
+    textbox.refresh()
+    p = textbox.getstr(1, 1)
+    textbox.clear()
+    textbox.box()
+    textbox.refresh()
+    curses.noecho()
+    textbox.nodelay(True)
+    return (socket.gethostbyname(n), int(p, 10)) if n and p else False
+
+def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
+    try:
+        delim_index = msg.index(':')
+        machine_index = ''.join(msg[0:delim_index])
+        machine_index.strip(string.whitespace)
+        if machine_index != 0:
+            m = message.Message()
+            data = ''.join(msg[delim_index+1:])
+            data.strip(string.whitespace)
+            m.setData(data)
+            m.setOrigin(machines[host])
+            m.setDestiny(machine_index)
+            messages.append(("Você para %s: %s" % (machine_index, m.getData()), curses.A_NORMAL))
+            connection.put_message(s, m.getMessage(), nextHost)
+    except Exception, e:
+        s = ''.join(msg)
+        s.strip(string.whitespace)
+        if s[0] == '/':
+            action = s[1:]
+            if action == "quit":
+                sys.exit(0)
+            elif action == "token":
+                pass
+        else:
+            messages.append(("ERRO: A mensagem deve ter o formato: <host>:<mensagem>\n%s"%e, curses.A_BOLD))
+            logging.debug(e)
+    finally:
+        msg = []
+    return msg
 
 def main(stdscr, args):
     stdscr.nodelay(True)
@@ -88,6 +141,9 @@ def main(stdscr, args):
 
     messages.append(("INFO: Você não está conectado", curses.A_BOLD))
     messages.append(("INFO: Aperte 'c' para se conectar a alguém", curses.A_BOLD))
+    messages.append(("INFO: Aperte 'q' para sair", curses.A_BOLD))
+    messages.append(("INFO: Durante o anel digite '/quit' para sair", curses.A_BOLD))
+    messages.append(("INFO: Durante o anel digite '/token' para perder o bastão", curses.A_BOLD))
     messages.append(("INFO: Nome da máquina: %s" % hostname, curses.A_BOLD))
     messages.append(("INFO: Porta do servidor: %s" % serverPort, curses.A_BOLD))
     messages.append(("INFO: Porta da rede: %s" % port, curses.A_BOLD))
@@ -104,28 +160,17 @@ def main(stdscr, args):
 
         if len(machines) <= 1 or nextHost == (host, port):
             key = stdscr.getch()
-            if key == ord('c'):
+            if key == ord('q'):
+                sys.exit(0)
+            elif key == ord('c'):
                 # Pega informações do host
-                textbox.nodelay(False)
-                curses.echo()
-                textbox.addstr(0, 1, "Digite o nome da máquina:")
-                textbox.refresh()
-                n = textbox.getstr(1, 1)
-                textbox.clear()
-                textbox.box()
-                textbox.refresh()
-                textbox.addstr(0, 1, "Digite a porta (a porta padrão é 5050):")
-                textbox.refresh()
-                p = textbox.getstr(1, 1)
-                nextHost = (socket.gethostbyname(n), int(p))
-                textbox.clear()
-                textbox.box()
-                textbox.refresh()
-                curses.noecho()
-                textbox.nodelay(True)
+                nextHost = connectToMachine(textbox)
                 # Send handshake
-                connection.send_handshake(confserver,nextHost, port)
-                messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
+                if nextHost:
+                    connection.send_handshake(confserver, nextHost, port)
+                    messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
+                else:
+                    nextHost = (host, port)
         else:
             key = textbox.getch()
             if key != -1:
@@ -135,21 +180,7 @@ def main(stdscr, args):
                     try:
                         c = chr(key)
                         if c == '\n':
-                            try:
-                                delim_index = msg.index(':')
-                                machine_index = ''.join(msg[0:delim_index])
-                                if machine_index != 0:
-                                    m = message.Message()
-                                    m.setData(''.join(msg[delim_index+1:]))
-                                    m.setOrigin(machines[(host, port)])
-                                    m.setDestiny(machine_index)
-                                    messages.append(("Você para %s: %s" % (machine_index, m.getData()), curses.A_NORMAL))
-                                    connection.put_message(s, m.getMessage(), nextHost)
-                            except Exception, e:
-                                messages.append(("ERRO: A mensagem deve ter o formato: <host>:<mensagem>\n%s"%e, curses.A_BOLD))
-                                logging.debug(e)
-                            finally:
-                                msg = []
+                            msg = parseUserMessage(msg, messages, machines, (host, port), connection, s, nextHost)
                         elif c in string.printable:
                             msg.append(c)
                     except ValueError:
@@ -174,9 +205,9 @@ def main(stdscr, args):
                 logging.debug("Data %d:%d:%d: %s" % (n.hour, n.minute, n.second, data))
                 m = message.Message()
                 m.setMessage(data)
-                if not m.isToken():
-                    messages.append(("data: %s" % m.getData(), curses.A_NORMAL))
-                    messages.append(("data raw: %s" % m.getReadableMessage(), curses.A_NORMAL))
+                # if not m.isToken():
+                    # messages.append(("data: %s" % m.getData(), curses.A_NORMAL))
+                    # messages.append(("data raw: %s" % m.getReadableMessage(), curses.A_NORMAL))
             if sock is confserver:
                 if m.isHandshake() and not m.isConfiguration():
                     if len(machines) < 4:
@@ -213,16 +244,22 @@ def main(stdscr, args):
                         m.setRead(machines[(host, port)])
                 else:
                     if m.getDestiny() == machines[(host, port)] or m.getDestiny() == "5":
-                        messages.append(("%d:%d:%d - %s: %s" % (now.hour, now.minute, now.second, addr[0], m.getData()), curses.A_NORMAL))
+                        hour = '{:%H:%M:%S}'.format(now)
+                        messages.append(("%s-%s: %s" % (hour, getMachineName(addr[0]), m.getData()), curses.A_NORMAL))
                         if m.checkParity():
                             m.setRead(machines[(host, port)])
                 if not m.isToken() and m.getOrigin() != machines[(host,port)]:
                     connection.put_message(s, m.getMessage(), nextHost)
 
-        if has_token or len(machines) < 2:
-            for sock in ready_to_write:
+
+        for sock in ready_to_write:
+            if sock is confserver:
                 if connection.has_message(sock):
                     connection.send_message(sock)
+            else:
+                if has_token or len(machines) < 2:
+                    if connection.has_message(sock):
+                        connection.send_message(sock)
 
         chatscreen.noutrefresh()
         machinescreen.noutrefresh()
