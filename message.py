@@ -189,7 +189,7 @@ class Message(object):
         return ''.join(m)
 
     def getReadableMessage(self):
-        m = ['{0:08b}'.format(ord(self.control)), self.origin, self.destiny, self.size, self.data]
+        m = ['{0:08b}'.format(ord(self.control)), self.origin, self.destiny, self.size, self.data, '{0:08b}'.format(ord(self.response))]
         return '|'.join(m)
 
 def makeHandshake(port):

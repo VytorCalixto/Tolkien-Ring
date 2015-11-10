@@ -268,7 +268,6 @@ def main(stdscr, args):
                     has_token = True
                     t0 = time.time()
                     printHeader(stdscr, hostname, host, "Conectado: Com token")
-                    messages.append(("Token", curses.A_BOLD))
                     if m.isMonitor() and not is_owner:
                         connection.put_message(confserver, m.getMessage(), nextHost)
                 elif m.isConfiguration():
