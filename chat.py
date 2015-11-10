@@ -107,8 +107,7 @@ def main(stdscr, args):
 
     connectionTimeout = Timer("conn", 3.0)
     tokenTimeout = Timer("token", 5.0)
-    msgTimeout = Timer("msg", 2.0)
-    timeouts = {"conn":connectionTimeout, "token":tokenTimeout, "msg":msgTimeout}
+    timeouts = {"conn":connectionTimeout, "token":tokenTimeout}
 
     machines = {}
     messages = []
@@ -220,9 +219,6 @@ def main(stdscr, args):
                     messages.append(("INFO: Token Timeout", curses.A_BOLD))
                     connection.send_token(confserver, nextHost, True, machines[(host, port)])
                     timeouts["token"].start()
-                elif t is msgTimeout:
-                    messages.append(("INFO: A mensagem não chegou ao destino. Talvez haja um problema com a rede.", curses.A_BOLD))
-                    timeouts["msg"].reset()
 
         ready_to_read,ready_to_write,in_error = connection.poll()
 
@@ -261,14 +257,13 @@ def main(stdscr, args):
                     printHeader(stdscr, hostname, host, "Conectado")
             else:
                 m.setReceived(machines[(host, port)])
-                is_owner = m.getOrigin() == machines[(host, port)]
                 now = datetime.datetime.now()
                 if m.isToken():
                     timeouts["token"].reset()
                     has_token = True
                     t0 = time.time()
                     printHeader(stdscr, hostname, host, "Conectado: Com token")
-                    if m.isMonitor() and not is_owner:
+                    if m.isMonitor() and m.getOrigin() != machines[(host, port)]:
                         connection.put_message(confserver, m.getMessage(), nextHost)
                 elif m.isConfiguration():
                     if m.checkParity():
@@ -281,10 +276,9 @@ def main(stdscr, args):
                             m.setRead(machines[(host, port)])
                             hour = '{:%H:%M:%S}'.format(now)
                             messages.append(("%s-%s: %s" % (hour, getMachineName(addr[0]), m.getData()), curses.A_NORMAL))
-                if is_owner:
+                if m.getOrigin() == machines[(host, port)]:
                     is_received = True
                     is_read = True
-                    timeouts["msg"].reset()
                     has_msg_on_ring = False
                     if m.getDestiny() == "5":
                         for h, index in machines.items():
@@ -296,7 +290,7 @@ def main(stdscr, args):
                     else:
                         is_received = m.getReceived(m.getOrigin())
                         is_read = m.getRead(m.getOrigin())
-                    messages.append(("INFO: r:%r l:%r" % (is_received, is_read), curses.A_BOLD))
+                    messages.append(("INFO: r:%r l:%r - %s" % (is_received, is_read, m.getData()), curses.A_BOLD))
                     #if not is_read or not is_received:
                         #connection.put_message(s, m.getMessage(), nextHost)
                 if not m.isToken() and not is_owner:
@@ -307,7 +301,6 @@ def main(stdscr, args):
                 connection.send_message(sock)
                 if has_token:
                     has_msg_on_ring = True
-                    timeouts["msg"].start()
 
         chatscreen.noutrefresh()
         machinescreen.noutrefresh()
