@@ -69,7 +69,7 @@ def connectToMachine(textbox):
     textbox.nodelay(True)
     return (socket.gethostbyname(n), int(p, 10)) if n and p else False
 
-def parseUserMessage(msg, messages):
+def parseUserMessage(msg, messages, machines):
     if msg[0] == '/':
         action = msg[1:]
         if action == "quit":
@@ -169,7 +169,7 @@ def main(stdscr, args):
                     try:
                         c = chr(key)
                         if c == '\n':
-                            msg = parseUserMessage(msg, messages)
+                            msg = parseUserMessage(msg, messages, machines)
                         elif c in string.printable:
                             msg.append(c)
                     except ValueError:
