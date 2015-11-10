@@ -72,8 +72,8 @@ def main(stdscr, args):
     connection = Connection()
     s = connection.open_socket(host, port)
     confserver = connection.open_socket(host, serverPort)
-    connection.input_sockets = [s,confserver]
-    connection.output_sockets = [s,confserver]
+    connection.input_sockets = [confserver,s]
+    connection.output_sockets = [confserver,s]
 
     machines[(host, port)] = '1'
     printHeader(stdscr, hostname, host, "Desconectado")
@@ -198,13 +198,6 @@ def main(stdscr, args):
                     nextHost = (otherHost[0:delim_index], int(otherHost[delim_index+1:], 10))
                     messages.append(("INFO: Você se conectou a rede", curses.A_BOLD))
                     printHeader(stdscr, hostname, host, "Conectado")
-                    if len(machines) > 2:
-                        conf = message.Message()
-                        conf.setConfiguration()
-                        conf.setOrigin(machines[(host, port)])
-                        conf.setDestiny("5")
-                        conf.setData(str(machines))
-                        connection.put_message(s, conf.getMessage(), nextHost)
             else:
                 m.setReceived(machines[(host, port)])
                 now = datetime.datetime.now()
