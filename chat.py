@@ -303,12 +303,9 @@ def main(stdscr, args):
                     connection.put_message(s, m.getMessage(), nextHost)
 
         for sock in ready_to_write:
-            if sock is confserver or len(machines) < 2:
-                if connection.has_message(sock):
-                    connection.send_message(sock)
-            elif has_token:
-                if connection.has_message(sock):
-                    connection.send_message(sock)
+            if connection.has_message(sock):
+                connection.send_message(sock)
+                if has_token:
                     has_msg_on_ring = True
                     timeouts["msg"].start()
 
