@@ -31,9 +31,8 @@ def printHeader(screen, hostname, ip, status):
     screen.addstr(3, (x - len(title))/2, title, curses.A_REVERSE)
 
 def printMessages(screen, messages):
-    yx = screen.getmaxyx()
-    topRange = len(messages) if ((yx[0]-2) > len(messages)) else (yx[0]-2)
-    for i in range(0, topRange):
+    y = screen.getmaxyx()[0]
+    for i in messages[-y:]:
         screen.addstr(i+1, 1, messages[i][0], messages[i][1])
 
 def printMachines(screen, machines):
@@ -82,7 +81,7 @@ def main(stdscr, args):
     chatscreen = stdscr.subpad(yx[0]-7, yx[1]-20, 4, 0)
     machinescreen = stdscr.subwin(yx[0]-7, 18, 4, yx[1]-19)
     textbox = stdscr.subwin(3, yx[1]-1, yx[0]-3, 0)
-    
+
     textbox.nodelay(True)
     curses.curs_set(0)
 
@@ -91,7 +90,7 @@ def main(stdscr, args):
     messages.append(("INFO: Nome da máquina: %s" % hostname, curses.A_BOLD))
     messages.append(("INFO: Porta do servidor: %s" % serverPort, curses.A_BOLD))
     messages.append(("INFO: Porta da rede: %s" % port, curses.A_BOLD))
-   
+
     curses.cbreak()
 
     t0 = 0.0
@@ -217,7 +216,7 @@ def main(stdscr, args):
                             m.setRead(machines[(host, port)])
                 if not m.isToken() and m.getOrigin() != machines[(host,port)]:
                     connection.put_message(s, m.getMessage(), nextHost)
-        
+
         for sock in ready_to_write:
             if connection.has_message(sock):
                 connection.send_message(sock)
