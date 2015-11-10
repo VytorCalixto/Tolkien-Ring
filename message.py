@@ -1,6 +1,8 @@
 # -*- coding:utf-8 -*-
 from binascii import crc32
 
+maxSize = 4095
+
 # Converte um caracter em uma lista que representa o valor binário
 def chrToBitList(c):
     return list('{0:08b}'.format(ord(c)))
@@ -59,14 +61,14 @@ class Message(object):
         self.destiny = destiny
 
     def setSize(self, size):
-        if size <= 4095:
+        if size <= maxSize:
             self.size = '{0:03x}'.format(size)
         else:
             # Throw error
             pass
 
     def setData(self, data):
-        if len(data) <= 4095:
+        if len(data) <= maxSize:
             self.data = data
             self.setSize(len(data))
         else:

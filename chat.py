@@ -16,6 +16,8 @@ from timeout import Timer
 
 logging.basicConfig(filename='tolkien.log', level=logging.DEBUG)
 
+lose_token = False
+
 def parseArgs():
     parser = argparse.ArgumentParser(description="TolkienRing: Chat em anel de até 4 máquinas", prog="chat")
     parser.add_argument("-p", "--port", type=int, help="Porta de comunicação", default=1337)
@@ -93,7 +95,7 @@ def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
             if action == "quit":
                 sys.exit(0)
             elif action == "token":
-                pass
+                lose_token = True
         else:
             messages.append(("ERRO: A mensagem deve ter o formato: <host>:<mensagem>\n%s"%e, curses.A_BOLD))
             logging.debug(e)
@@ -106,7 +108,7 @@ def main(stdscr, args):
 
     connectionTimeout = Timer("conn", 5.0)
     tokenTimeout = Timer("token", 3.0)
-    msgTimeout = Timer("msg", 3.0)
+    msgTimeout = Timer("msg", 1.5)
     timeouts = {"conn":connectionTimeout, "token":tokenTimeout, "msg":msgTimeout}
 
     machines = {}
@@ -187,7 +189,7 @@ def main(stdscr, args):
                         c = chr(key)
                         if c == '\n':
                             msg = parseUserMessage(msg, messages, machines, (host, port), connection, s, nextHost)
-                        elif c in string.printable:
+                        elif c in string.printable and len(msg) <= message.maxSize:
                             msg.append(c)
                     except ValueError:
                         pass
@@ -197,7 +199,10 @@ def main(stdscr, args):
             textbox.noutrefresh()
 
             if has_token:
-                if (time.time() - t0) >= quantum:
+                if lose_token:
+                    lose_token = False
+                    has_token = False
+                elif (time.time() - t0) >= quantum:
                     connection.send_token(s, nextHost)
                     has_token = False
                     timeouts["token"].start()
@@ -210,7 +215,7 @@ def main(stdscr, args):
                     messages.append(("INFO: Não foi possível se conectar. Tente novamente.", curses.A_BOLD))
                     timeouts["conn"].reset()
                 elif t is tokenTimeout:
-                    connection.send_token(s, nextHost, True)
+                    connection.send_token(s, nextHost, True, machines[(host, port)])
                     timeouts["token"].reset()
                 elif t is msgTimeout:
                     messages.append(("INFO: A mensagem não chegou ao destino. Talvez haja um problema com a rede.", curses.A_BOLD))
@@ -256,7 +261,8 @@ def main(stdscr, args):
                 now = datetime.datetime.now()
                 is_received = False
                 is_read = False
-                if m.getOrigin() == machines[(host, port)]:
+                is_owner = m.getOrigin() == machines[(host, port)]
+                if is_owner:
                     timeouts["msg"].reset()
                     has_msg_on_ring = False
                     if m.getDestiny() == "5":
@@ -270,6 +276,8 @@ def main(stdscr, args):
                     has_token = True
                     t0 = time.time()
                     printHeader(stdscr, hostname, host, "Conectado: Com token")
+                    if m.isMonitor() and not is_owner:
+                        connection.put_message(s, m.getMessage(), nextHost)
                 elif m.isConfiguration():
                     if m.checkParity():
                         machines = ast.literal_eval(m.getData())
@@ -281,7 +289,7 @@ def main(stdscr, args):
                             m.setRead(machines[(host, port)])
                             hour = '{:%H:%M:%S}'.format(now)
                             messages.append(("%s-%s: %s" % (hour, getMachineName(addr[0]), m.getData()), curses.A_NORMAL))
-                if (not m.isToken() and not m.isMonitor()) and (m.getOrigin() != machines[(host,port)]) or not is_read or not is_received:
+                if not is_read or not is_received or not is_owner:
                     connection.put_message(s, m.getMessage(), nextHost)
 
         for sock in ready_to_write:

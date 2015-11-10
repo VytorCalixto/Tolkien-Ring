@@ -35,8 +35,10 @@ class Connection(object):
         logging.debug(ack.getMessage())
         self.messages[sock].append((ack.getMessage(), addr))
 
-    def send_token(self, sock, addr, monitor = False):
+    def send_token(self, sock, addr, monitor = False, origin="0"):
         token = message.makeMonitor() if monitor else message.makeToken()
+        if monitor:
+            token.setOrigin(origin)
         self.messages[sock].append((token.getMessage(), addr))
 
     def put_message(self, sock, msg, addr):
