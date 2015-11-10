@@ -297,10 +297,14 @@ def main(stdscr, args):
                     connection.put_message(s, m.getMessage(), nextHost)
 
         for sock in ready_to_write:
-            if connection.has_message(sock):
-                connection.send_message(sock)
+            if sock is s:
                 if has_token:
-                    has_msg_on_ring = True
+                    if connection.has_message(sock):
+                        connection.send_message(sock)
+                        has_msg_on_ring = True
+            else:
+                if connection.has_message(sock):
+                    connection.send_message(sock)
 
         chatscreen.noutrefresh()
         machinescreen.noutrefresh()
