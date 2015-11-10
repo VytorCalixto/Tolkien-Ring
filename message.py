@@ -153,10 +153,9 @@ class Message(object):
                 return False
         return True
 
-
     def getRead(self, machine):
         i = int(machine, 10) - 1
-        return chrToBitString(self.response)[i*2 + 1] == "1"
+        return chrToBitString(self.response)[i * 2 + 1] == "1"
 
     def getAllRead(self, machine):
         # machine é a máquina que enviou

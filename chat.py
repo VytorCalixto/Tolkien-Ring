@@ -297,8 +297,8 @@ def main(stdscr, args):
                         is_received = m.getReceived(m.getOrigin())
                         is_read = m.getRead(m.getOrigin())
                     messages.append(("INFO: r:%r l:%r" % (is_received, is_read), curses.A_BOLD))
-                    if not is_read or not is_received:
-                        connection.put_message(s, m.getMessage(), nextHost)
+                    #if not is_read or not is_received:
+                        #connection.put_message(s, m.getMessage(), nextHost)
                 if not m.isToken() and not is_owner:
                     connection.put_message(s, m.getMessage(), nextHost)
 
