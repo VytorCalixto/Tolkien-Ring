@@ -32,8 +32,10 @@ def printHeader(screen, hostname, ip, status):
 
 def printMessages(screen, messages):
     y = screen.getmaxyx()[0] - 2 #-2 pelas bordas
-    for i in messages[-y:]:
-        screen.addstr(i+1, 1, messages[i][0], messages[i][1])
+    i = 1
+    for msg in messages[-y:]:
+        screen.addstr(i, 1, msg[0], msg[1])
+        i+=1
 
 def printMachines(screen, machines):
     x = screen.getmaxyx()[1]
@@ -87,6 +89,9 @@ def main(stdscr, args):
 
     messages.append(("INFO: Você não está conectado", curses.A_BOLD))
     messages.append(("INFO: Aperte 'c' para se conectar a alguém", curses.A_BOLD))
+    messages.append(("INFO: Aperte 'q' para sair", curses.A_BOLD))
+    messages.append(("INFO: Durante o anel digite '/quit' para sair", curses.A_BOLD))
+    messages.append(("INFO: Durante o anel digite '/token' para perder o bastão", curses.A_BOLD))
     messages.append(("INFO: Nome da máquina: %s" % hostname, curses.A_BOLD))
     messages.append(("INFO: Porta do servidor: %s" % serverPort, curses.A_BOLD))
     messages.append(("INFO: Porta da rede: %s" % port, curses.A_BOLD))
@@ -103,7 +108,9 @@ def main(stdscr, args):
 
         if len(machines) <= 1 or nextHost == (host, port):
             key = stdscr.getch()
-            if key == ord('c'):
+            if key == ord('q'):
+                sys.exit(0)
+            elif key == ord('c'):
                 # Pega informações do host
                 textbox.nodelay(False)
                 curses.echo()
