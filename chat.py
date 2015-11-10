@@ -293,7 +293,7 @@ def main(stdscr, args):
                     messages.append(("INFO: r:%r l:%r - %s" % (is_received, is_read, m.getData()), curses.A_BOLD))
                     #if not is_read or not is_received:
                         #connection.put_message(s, m.getMessage(), nextHost)
-                if not m.isToken() and not is_owner:
+                if not m.isToken() and m.getOrigin() != machines[(host, port)]:
                     connection.put_message(s, m.getMessage(), nextHost)
 
         for sock in ready_to_write:
