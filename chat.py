@@ -208,7 +208,7 @@ def main(stdscr, args):
                     has_token = False
                     timeouts["token"].start()
                     printHeader(stdscr, hostname, host, "Conectado: Sem Token")
-                    logging.debud("Enviei o token")
+                    logging.debug("Enviei o token")
 
         # Checa os timeouts
         for name, t in timeouts.items():
