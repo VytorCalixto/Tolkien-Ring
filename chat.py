@@ -281,9 +281,9 @@ def main(stdscr, args):
                             m.setRead(machines[(host, port)])
                             hour = '{:%H:%M:%S}'.format(now)
                             messages.append(("%s-%s: %s" % (hour, getMachineName(addr[0]), m.getData()), curses.A_NORMAL))
-                is_received = True
-                is_read = True
                 if is_owner:
+                    is_received = True
+                    is_read = True
                     timeouts["msg"].reset()
                     has_msg_on_ring = False
                     if m.getDestiny() == "5":
@@ -296,6 +296,7 @@ def main(stdscr, args):
                     else:
                         is_received = m.getReceived(m.getOrigin())
                         is_read = m.getRead(m.getOrigin())
+                    messages.append(("INFO: r:%r l:%r" % (is_received, is_read), curses.A_BOLD))
                     if not is_read or not is_received:
                         connection.put_message(s, m.getMessage(), nextHost)
                 if not m.isToken() and not is_owner:
