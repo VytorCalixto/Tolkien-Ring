@@ -70,14 +70,6 @@ def connectToMachine(textbox):
     return (socket.gethostbyname(n), int(p, 10)) if n and p else False
 
 def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
-    s = ''.join(msg)
-    s.strip(string.whitespace)
-    if s[0] == '/':
-        action = s[1:]
-        if action == "quit":
-            sys.exit(0)
-        elif action == "token":
-            pass
     try:
         delim_index = msg.index(':')
         machine_index = ''.join(msg[0:delim_index])
@@ -92,8 +84,17 @@ def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
             messages.append(("Você para %s: %s" % (machine_index, m.getData()), curses.A_NORMAL))
             connection.put_message(s, m.getMessage(), nextHost)
     except Exception, e:
-        messages.append(("ERRO: A mensagem deve ter o formato: <host>:<mensagem>\n%s"%e, curses.A_BOLD))
-        logging.debug(e)
+        s = ''.join(msg)
+        s.strip(string.whitespace)
+        if s[0] == '/':
+            action = s[1:]
+            if action == "quit":
+                sys.exit(0)
+            elif action == "token":
+                pass
+        else:
+            messages.append(("ERRO: A mensagem deve ter o formato: <host>:<mensagem>\n%s"%e, curses.A_BOLD))
+            logging.debug(e)
     finally:
         msg = []
     return msg
