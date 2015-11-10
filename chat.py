@@ -272,8 +272,8 @@ def main(stdscr, args):
                         if m.getAllReceived(machines[(host, port)]) and m.getAllRead(machines[(host, port)]):
                             is_received = is_read = True
                     else:
-                        is_received = m.getReceived(int(m.getOrigin()))
-                        is_read = m.getRead(int(m.getOrigin()))
+                        is_received = m.getReceived(m.getOrigin())
+                        is_read = m.getRead(m.getOrigin())
                     if not is_read or not is_received:
                         connection.put_message(s, m.getMessage(), nextHost)
                 if m.isToken():
