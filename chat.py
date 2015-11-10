@@ -16,8 +16,6 @@ from timeout import Timer
 
 logging.basicConfig(filename='tolkien.log', level=logging.DEBUG)
 
-lose_token = False
-
 def parseArgs():
     parser = argparse.ArgumentParser(description="TolkienRing: Chat em anel de até 4 máquinas", prog="chat")
     parser.add_argument("-p", "--port", type=int, help="Porta de comunicação", default=1337)
@@ -74,6 +72,7 @@ def connectToMachine(textbox):
     return (socket.gethostbyname(n), int(p, 10)) if n and p else False
 
 def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
+    lose_token = False
     try:
         delim_index = msg.index(':')
         machine_index = ''.join(msg[0:delim_index])
@@ -101,7 +100,7 @@ def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
             logging.debug(e)
     finally:
         msg = []
-    return msg
+    return (msg, lose_token)
 
 def main(stdscr, args):
     stdscr.nodelay(True)
@@ -118,6 +117,7 @@ def main(stdscr, args):
     host = socket.gethostbyname(hostname)
     has_msg_on_ring = False
     has_token = False
+    lose_token = False
     quantum = 0.25
 
     if args.port == args.serverPort:
@@ -188,7 +188,7 @@ def main(stdscr, args):
                     try:
                         c = chr(key)
                         if c == '\n':
-                            msg = parseUserMessage(msg, messages, machines, (host, port), connection, s, nextHost)
+                            msg, lose_token = parseUserMessage(msg, messages, machines, (host, port), connection, s, nextHost)
                         elif c in string.printable and len(msg) <= message.maxSize:
                             msg.append(c)
                     except ValueError:
@@ -218,7 +218,7 @@ def main(stdscr, args):
                     timeouts["conn"].reset()
                 elif t is tokenTimeout:
                     messages.append(("INFO: Token Timeout", curses.A_BOLD))
-                    connection.send_token(s, nextHost, True, machines[(host, port)])
+                    connection.send_token(confserver, nextHost, True, machines[(host, port)])
                     timeouts["token"].start()
                 elif t is msgTimeout:
                     messages.append(("INFO: A mensagem não chegou ao destino. Talvez haja um problema com a rede.", curses.A_BOLD))
@@ -230,7 +230,6 @@ def main(stdscr, args):
             data, addr = sock.recvfrom(1024)
             if data:
                 n = datetime.datetime.now()
-                logging.debug("Data %d:%d:%d: %s" % (n.hour, n.minute, n.second, data))
                 m = message.Message()
                 m.setMessage(data)
                 if not m.isToken():
@@ -245,8 +244,7 @@ def main(stdscr, args):
                         messages.append(("INFO: %s se conectou" % getMachineName(addr[0]), curses.A_BOLD))
                         # Se só tem 2 máquinas, é a primeira conexão
                         if len(machines) == 2:
-                            connection.send_token(s, nextHost)
-                            timeouts["token"].start()
+                            has_token = True
                         conf = message.Message()
                         conf.setConfiguration()
                         conf.setOrigin(machines[(host, port)])
