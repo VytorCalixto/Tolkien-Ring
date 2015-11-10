@@ -238,9 +238,11 @@ def main(stdscr, args):
                         nextHost = (addr[0], int(m.getData(), 10))
                         machines[nextHost] = str(len(machines) + 1)
                         messages.append(("INFO: %s se conectou" % getMachineName(addr[0]), curses.A_BOLD))
+                        printHeader(stdscr, hostname, host, "Conectado")
                         # Se só tem 2 máquinas, é a primeira conexão
                         if len(machines) == 2:
                             connection.send_token(confserver, nextHost)
+                            timeouts["token"].start()
                         conf = message.Message()
                         conf.setConfiguration()
                         conf.setOrigin(machines[(host, port)])
