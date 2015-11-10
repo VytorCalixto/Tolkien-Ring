@@ -50,6 +50,25 @@ def printMachines(screen, machines):
 def getMachineName(host):
     return socket.gethostbyaddr(host)[0].split('.')[0]
 
+def connectToMachine(textbox):
+    textbox.nodelay(False)
+    curses.echo()
+    textbox.addstr(0, 1, "Digite o nome da máquina:")
+    textbox.refresh()
+    n = textbox.getstr(1, 1)
+    textbox.clear()
+    textbox.box()
+    textbox.refresh()
+    textbox.addstr(0, 1, "Digite a porta (a porta padrão é 5050):")
+    textbox.refresh()
+    p = textbox.getstr(1, 1)
+    textbox.clear()
+    textbox.box()
+    textbox.refresh()
+    curses.noecho()
+    textbox.nodelay(True)
+    return (socket.gethostbyname(n), int(p, 10)) if n and p else False
+
 def main(stdscr, args):
     stdscr.nodelay(True)
 
@@ -112,26 +131,13 @@ def main(stdscr, args):
                 sys.exit(0)
             elif key == ord('c'):
                 # Pega informações do host
-                textbox.nodelay(False)
-                curses.echo()
-                textbox.addstr(0, 1, "Digite o nome da máquina:")
-                textbox.refresh()
-                n = textbox.getstr(1, 1)
-                textbox.clear()
-                textbox.box()
-                textbox.refresh()
-                textbox.addstr(0, 1, "Digite a porta (a porta padrão é 5050):")
-                textbox.refresh()
-                p = textbox.getstr(1, 1)
-                nextHost = (socket.gethostbyname(n), int(p))
-                textbox.clear()
-                textbox.box()
-                textbox.refresh()
-                curses.noecho()
-                textbox.nodelay(True)
+                nextHost = connectToMachine(textbox)
                 # Send handshake
-                connection.send_handshake(confserver,nextHost, port)
-                messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
+                if nextHost:
+                    connection.send_handshake(confserver, nextHost, port)
+                    messages.append(("INFO: Tentando conectar...", curses.A_BOLD))
+                else:
+                    nextHost = (host, port)
         else:
             key = textbox.getch()
             if key != -1:
