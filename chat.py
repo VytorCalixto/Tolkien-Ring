@@ -69,7 +69,7 @@ def connectToMachine(textbox):
     textbox.nodelay(True)
     return (socket.gethostbyname(n), int(p, 10)) if n and p else False
 
-def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
+def parseUserMessage(msg, messages, machines, host, connection, s, nextHost, lose_token):
     try:
         delim_index = msg.index(':')
         machine_index = ''.join(msg[0:delim_index])
@@ -91,13 +91,13 @@ def parseUserMessage(msg, messages, machines, host, connection, s, nextHost):
             if action == "quit":
                 sys.exit(0)
             elif action == "token":
-                pass
+                lose_token = True
         else:
             messages.append(("ERRO: A mensagem deve ter o formato: <host>:<mensagem>\n%s"%e, curses.A_BOLD))
             logging.debug(e)
     finally:
         msg = []
-    return msg
+    return (msg, lose_token)
 
 def main(stdscr, args):
     stdscr.nodelay(True)
@@ -109,6 +109,8 @@ def main(stdscr, args):
     host = socket.gethostbyname(hostname)
     has_token = False
     quantum = 0.25
+
+    lose_token = False
 
     if args.port == args.serverPort:
         # TODO: mostrar uma mensagem de erro melhor
@@ -177,7 +179,7 @@ def main(stdscr, args):
                     try:
                         c = chr(key)
                         if c == '\n':
-                            msg = parseUserMessage(msg, messages, machines, (host, port), connection, s, nextHost)
+                            msg, lose_token = parseUserMessage(msg, messages, machines, (host, port), connection, s, nextHost, lose_token)
                         elif c in string.printable:
                             msg.append(c)
                     except ValueError:
@@ -187,7 +189,11 @@ def main(stdscr, args):
             textbox.addstr(1,1, ''.join(msg))
             textbox.noutrefresh()
             if has_token:
-                if (time.time() - t0) >= quantum:
+                if lose_token:
+                    has_token = False
+                    lose_token = False
+                    printHeader(stdscr, hostname, host, "Conectado: Sem Token")
+                elif (time.time() - t0) >= quantum:
                     connection.send_token(s, nextHost)
                     has_token = False
                     printHeader(stdscr, hostname, host, "Conectado: Sem Token")
@@ -253,6 +259,7 @@ def main(stdscr, args):
 
         chatscreen.noutrefresh()
         machinescreen.noutrefresh()
+        stdscr.noutrefresh()
         curses.doupdate()
 
 
