@@ -283,7 +283,7 @@ def main(stdscr, args):
                     printHeader(stdscr, hostname, host, "Conectado: Com token")
                     messages.append(("Token", curses.A_BOLD))
                     if m.isMonitor() and not is_owner:
-                        connection.put_message(s, m.getMessage(), nextHost)
+                        connection.put_message(confserver, m.getMessage(), nextHost)
                 elif m.isConfiguration():
                     if m.checkParity():
                         machines = ast.literal_eval(m.getData())
