@@ -219,7 +219,7 @@ def main(stdscr, args):
                 elif t is tokenTimeout:
                     messages.append(("INFO: Token Timeout", curses.A_BOLD))
                     connection.send_token(s, nextHost, True, machines[(host, port)])
-                    timeouts["token"].reset()
+                    timeouts["token"].start()
                 elif t is msgTimeout:
                     messages.append(("INFO: A mensagem não chegou ao destino. Talvez haja um problema com a rede.", curses.A_BOLD))
                     timeouts["msg"].reset()
